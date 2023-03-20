@@ -1,0 +1,60 @@
+local _mdlHelpers = require('lollo_priority_signals.modelHelpers')
+
+function data()
+    return {
+        boundingInfo = _mdlHelpers.getVoidBoundingInfo(),
+        collider = _mdlHelpers.getVoidCollider(),
+        lods = {
+            {
+                node = {
+                    children = {
+                        {
+                            materials = {
+                                'lollo_priority_signals/icon/yellow.mtl',
+                                'lollo_priority_signals/icon/black.mtl',
+                            },
+                            mesh = 'lollo_priority_signals/icon/lod_0_icon_pointer_w_message.msh',
+                            transf = {1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1}
+                        },
+                    },
+                    name = "RootNode",
+                    transf = {1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 2, 0, 0, 0, 0, 1}
+                },
+                static = false,
+                visibleFrom = 0,
+                visibleTo = 1000
+            }
+        },
+        metadata = {
+            labelList = {
+                labels = {
+                    {
+                        alignment = "CENTER",
+                        alphaMode = "BLEND",
+                        childId = "RootNode",
+                        color = {255 / 255, 190 / 255, 0 /255},
+                        fitting = "SCALE",
+                        nLines = 2,
+                        size = { 10, 2.5 },
+                        transf = { 0, -1, 0, 0,  0, 0, 0.7, 0,  0.7, 0, 0, 0,  -0.26, 5, 5.25, 1, },
+                        type = "CUSTOM",
+                        verticalAlignment = "CENTER",
+                    },
+                    {
+                        alignment = "CENTER",
+                        alphaMode = "BLEND",
+                        childId = "RootNode",
+                        color = {255 / 255, 180 / 255, 0 /255},
+                        fitting = "SCALE",
+                        nLines = 2,
+                        size = { 10, 2.5 },
+                        transf = { 0, 1, 0, 0,  0, 0, 0.7, 0,  -0.7, 0, 0, 0,  0.26, -5, 5.25, 1, },
+                        type = "CUSTOM",
+                        verticalAlignment = "CENTER",
+                    },
+                },
+            },
+        },
+        version = 1
+    }
+end
