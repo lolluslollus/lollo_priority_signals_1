@@ -159,8 +159,8 @@ funcs.isOneWaySignalAgainstEdgeDirection = function(signalId)
     return false, edgeId
 end
 ---@param signalId integer
----@return {isGoAhead: boolean, edgeId: integer, startNodeId: integer, intersectionNodeId: integer}
-funcs.getNextIntersection = function(signalId)
+---@return {edgeId: integer, inEdgeId: integer, isFound: boolean, isGoAhead: boolean, nodeId: integer, startNodeId: integer}
+funcs.getNextIntersectionBehind = function(signalId)
     logger.print('getNextIntersection starting, signalId = ' .. signalId)
     local isSignalAgainst, edgeId = funcs.isOneWaySignalAgainstEdgeDirection(signalId)
     logger.print('isSignalAgainst = ' .. tostring(isSignalAgainst))
@@ -174,6 +174,7 @@ funcs.getNextIntersection = function(signalId)
     end
     local startNodeId = isSignalAgainst and baseEdge.node0 or baseEdge.node1
     local _getNextIntersection = function(edgeId_, startNodeId_)
+        logger.print('_getNextIntersection starting, edgeId_ = ' .. edgeId_ .. ', startNodeId_ = ' .. startNodeId_)
         local nextEdgeIds = funcs.getConnectedEdgeIds(edgeId_, startNodeId_)
         local nextEdgeIdsCount = #nextEdgeIds
         if nextEdgeIdsCount == 0 then -- end of line: do nothing
@@ -201,17 +202,20 @@ funcs.getNextIntersection = function(signalId)
             end
         else -- startNodeId is an intersection
             return {
-                intersectionNodeId = startNodeId_,
+                inEdgeId = edgeId_,
+                isFound = true,
                 isGoAhead = false,
+                nodeId = startNodeId_,
             }
         end
     end
     local intersectionProps = _getNextIntersection(edgeId, startNodeId)
     local count, _maxCount = 1, constants.maxNSegmentsFromIntersection
-    while intersectionProps.isGoAhead and count <= _maxCount do
+    while intersectionProps.isGoAhead and count < _maxCount do
         intersectionProps = _getNextIntersection(intersectionProps.edgeId, intersectionProps.startNodeId)
     end
 
+    logger.print('getNextIntersectionBehind about to return') logger.debugPrint(intersectionProps)
     return intersectionProps
 end
 

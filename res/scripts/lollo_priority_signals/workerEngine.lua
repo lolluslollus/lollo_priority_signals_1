@@ -441,13 +441,18 @@ return {
                 -- by construction, I cannot have more than one priority signal on any edge.
                 -- However, different priority signals might have the same intersection,
                 -- so I need to squash the table
-                local intersectionNodeIds_indexed = {}
+                local intersectionNodeIds_InEdgeIds_indexed = {}
                 for _, signalId in pairs(era_c_signalIds) do
-                    local intersectionProps = signalHelpers.getNextIntersection(signalId)
-                    logger.print('intersectionProps.intersectionNodeId = ' .. (intersectionProps.intersectionNodeId or 'NIL'))
-                    if intersectionProps.intersectionNodeId ~= nil then intersectionNodeIds_indexed[intersectionProps.intersectionNodeId] = true end
+                    local intersectionProps = signalHelpers.getNextIntersectionBehind(signalId)
+                    if intersectionProps.isFound then
+                        if intersectionNodeIds_InEdgeIds_indexed[intersectionProps.nodeId] == nil then
+                            intersectionNodeIds_InEdgeIds_indexed[intersectionProps.nodeId] = {[intersectionProps.inEdgeId] = true}
+                        else
+                            intersectionNodeIds_InEdgeIds_indexed[intersectionProps.nodeId][intersectionProps.inEdgeId] = true
+                        end
+                    end
                 end
-                logger.print('intersectionNodeIds_indexed =') logger.debugPrint(intersectionNodeIds_indexed)
+                logger.print('intersectionNodeIds_InEdgeIds_indexed =') logger.debugPrint(intersectionNodeIds_InEdgeIds_indexed)
 
                 local executionTime = math.ceil((os.clock() - _startTick) * 1000)
                 logger.print('Full update took ' .. executionTime .. 'ms')
