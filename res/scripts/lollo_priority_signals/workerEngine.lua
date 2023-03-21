@@ -454,8 +454,14 @@ return {
                 end
                 logger.print('intersectionNodeIds_InEdgeIds_indexed =') logger.debugPrint(intersectionNodeIds_InEdgeIds_indexed)
 
-                local executionTime = math.ceil((os.clock() - _startTick) * 1000)
-                logger.print('Full update took ' .. executionTime .. 'ms')
+                local edgeIdsGivingWay = signalHelpers.getNextLightsOrStations(intersectionNodeIds_InEdgeIds_indexed)
+                logger.print('edgeIdsGivingWay =') logger.debugPrint(edgeIdsGivingWay)
+
+
+                if logger.isExtendedLog() then
+                    local executionTime = math.ceil((os.clock() - _startTick) * 1000)
+                    logger.print('Finding edges and nodes took ' .. executionTime .. 'ms')
+                end
             end,
             logger.xpErrorHandler
         )
