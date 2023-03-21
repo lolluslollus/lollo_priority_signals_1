@@ -1,6 +1,6 @@
 local constants = {
     refreshPeriodMsec = 5000, -- refresh every 5 seconds
-    maxNSegmentsFromIntersection = 10, -- seek intersections max 10 segments ahead of signal
+    maxNSegmentsFromIntersection = 5, -- seek intersections max 10 segments ahead of signal
 
     eventId = '__lollo_priority_signals__',
     events = {

@@ -27,7 +27,7 @@ function data()
                 cost = 0,
                 models = {
 					{
-						id = 'lollo_priority_signals/icon/red.mdl',
+						id = 'lollo_priority_signals/icon/green.mdl',
                         transf = {1, 0, 0, 0,
                             0, 1, 0, 0,
                             0, 0, 1, 0,

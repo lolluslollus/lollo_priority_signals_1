@@ -16,7 +16,8 @@ local transfUtilsUG = require('transf')
 
     api.engine.system.transportVehicleSystem.getVehicles({edgeId}, true)
     api.engine.system.transportVehicleSystem.getVehicles({edgeId}, false)
-
+    -- this finds all vehicles anywhere between the two given edge ids:
+    api.engine.system.transportVehicleSystem.getVehicles({edge1Id, edge2Id}, true)
 
 ]]
 local  _signalModelId_EraA, _signalModelId_EraC, _signalModelId_OneWay_EraA, _signalModelId_OneWay_EraC
@@ -175,16 +176,17 @@ return {
                     LOLLO NOTE one-way lights are read as two-way lights,
                     and they don't appear in the menu if they have no two-way counterparts, or if those counterparts have expired.
                 ]]
-                local era_a_signalIds = signalHelpers.getAllEdgeObjectsAndEdgesWithModelId(_signalModelId_EraA)
-                local era_c_signalIds = signalHelpers.getAllEdgeObjectsAndEdgesWithModelId(_signalModelId_EraC)
+                -- local era_a_signalIds = signalHelpers.getAllEdgeObjectsAndEdgesWithModelId(_signalModelId_EraA)
+                -- local era_c_signalIds = signalHelpers.getAllEdgeObjectsAndEdgesWithModelId(_signalModelId_EraC)
+                local era_a_signalIds = signalHelpers.getAllEdgeObjectsWithModelId(_signalModelId_EraA)
+                local era_c_signalIds = signalHelpers.getAllEdgeObjectsWithModelId(_signalModelId_EraC)
                 -- local era_a_oneWay_signalIds = signalHelpers.getAllEdgeObjectsAndEdgesWithModelId(_signalModelId_OneWay_EraA)
                 -- local era_c_oneWay_signalIds = signalHelpers.getAllEdgeObjectsAndEdgesWithModelId(_signalModelId_OneWay_EraC)
                 logger.print('era_a_signalIds =') logger.debugPrint(era_a_signalIds)
                 logger.print('era_c_signalIds =') logger.debugPrint(era_c_signalIds)
                 -- logger.print('era_a_oneWay_signalIds =') logger.debugPrint(era_a_oneWay_signalIds)
                 -- logger.print('era_c_oneWay_signalIds =') logger.debugPrint(era_c_oneWay_signalIds)
-                for edgeObjectId, edgeId in pairs(era_c_signalIds) do
-                    local signalList = api.engine.getComponent(26666, api.type.ComponentType.SIGNAL_LIST)
+
 --[[
     From my priority light, I want to go ahead until the next traffic light or intersection, whichever comes first.
     If it is a light, return
@@ -202,8 +204,8 @@ return {
         Place the edgeId in a table and check it at every tick with api.engine.system.transportVehicleSystem.getVehicles({edgeId}, true),
         against my edges that has priority. There will be a number of such edges before a priority light.
     }
-    edge 26058 has two lights.
-    api.engine.getComponent(26058, api.type.ComponentType.BASE_EDGE)
+    edge 24657 has two lights and two waypoints.
+    api.engine.getComponent(24657, api.type.ComponentType.BASE_EDGE)
     {
         node0 = 25490,
         node1 = 25491,
@@ -222,8 +224,11 @@ return {
         objects = {
             { 26666, 2, }, -- the "2" says nothing about the orientation of the light or where it is, it seems useless
             { 27524, 2, },
+            { 19936, 2, },
+            { 14708, 2, },
         },
     }
+
 
     api.engine.getComponent(26666, api.type.ComponentType.SIGNAL_LIST)
     {
@@ -231,8 +236,8 @@ return {
             [1] = {
             edgePr = {
                 new = nil,
-                entity = 26058, -- edgeId
-                index = 2, -- index of edge section, in base 0. Use it in api.engine.system.signalSystem.getSignal(api.type.EdgeId.new(26058, 2), true)
+                entity = 24657, -- edgeId
+                index = 2, -- index of edge section, in base 0. Use it in api.engine.system.signalSystem.getSignal(api.type.EdgeId.new(24657, 2), true)
             },
             type = 0, -- 0 for two-way, 1 for one-way
             state = 0,
@@ -246,7 +251,7 @@ return {
             [1] = {
             edgePr = {
                 new = nil,
-                entity = 26058,
+                entity = 24657,
                 index = 1,
             },
             type = 1, -- this is one-way
@@ -255,46 +260,85 @@ return {
             },
         },
     }
-
-    api.engine.system.signalSystem.getSignal(api.type.EdgeId.new(26058, 0), false)
+    api.engine.getComponent(19936, api.type.ComponentType.SIGNAL_LIST)
+    {
+        signals = {
+            [1] = {
+            edgePr = {
+                new = nil,
+                entity = 24657,
+                index = 3, -- waypoints do not split edges into segments
+            },
+            type = 2, -- this is a waypoint
+            state = 0,
+            stateTime = -1,
+            },
+        },
+    }
+    api.engine.getComponent(14708, api.type.ComponentType.SIGNAL_LIST)
+    {
+        signals = {
+            [1] = {
+            edgePr = {
+                new = nil,
+                entity = 24657,
+                index = 3,
+            },
+            type = 2, -- this is a waypoint
+            state = 0,
+            stateTime = -1,
+            },
+        },
+    }
+    
+    api.engine.system.signalSystem.getSignal(api.type.EdgeId.new(24657, 0), false)
     {
         entity = -1, -- there are no signals on this piece of edge and pointing with the yellow arrow ALONG the travelling axes
         index = 0,
     }
-
-    api.engine.system.signalSystem.getSignal(api.type.EdgeId.new(26058, 0), true)
+    api.engine.system.signalSystem.getSignal(api.type.EdgeId.new(24657, 0), true)
     {
         entity = -1, -- there are no signals on this piece of edge and pointing with the yellow arrow AGAINST the travelling axes
         index = 0,
     }
-
-    api.engine.system.signalSystem.getSignal(api.type.EdgeId.new(26058, 1), true)
+    api.engine.system.signalSystem.getSignal(api.type.EdgeId.new(24657, 1), false)
+    {
+        entity = -1,
+        index = 0,
+    }
+    api.engine.system.signalSystem.getSignal(api.type.EdgeId.new(24657, 1), true)
     {
         entity = 27524, -- this is a light that has its white arrow oriented from node0 to node1 (ie the same as the little travelling axes)
         -- and its yellow arrow pointed against the little travelling axes
+        -- ie if it is a one-way light, it lets traffic through from baseEdge.node0 to baseEdge.node1
         -- ie, the true parameter returns it
         index = 0,
     }
-
-    api.engine.system.signalSystem.getSignal(api.type.EdgeId.new(26058, 1), false)
+    api.engine.system.signalSystem.getSignal(api.type.EdgeId.new(24657, 2), false)
     {
         entity = -1,
         index = 0,
     }
-    api.engine.system.signalSystem.getSignal(api.type.EdgeId.new(26058, 2), false)
-    {
-        entity = -1,
-        index = 0,
-    }
-
-    api.engine.system.signalSystem.getSignal(api.type.EdgeId.new(26058, 2), true) -- there are two light in baseEdge, so I check until index 2, ie the third segment the edge is split into
+    api.engine.system.signalSystem.getSignal(api.type.EdgeId.new(24657, 2), true)
+    -- there are two light in baseEdge, so I check until index 2, ie the third segment the edge is split into
     -- it is the same "2" that comes from api.engine.getComponent(26666, api.type.ComponentType.SIGNAL_LIST)
     {
         entity = 26666,
         index = 0,
     }
+    api.engine.system.signalSystem.getSignal(api.type.EdgeId.new(24657, 3), false)
+    {
+        entity = 14708,
+        index = 0,
+    }
+    api.engine.system.signalSystem.getSignal(api.type.EdgeId.new(24657, 3), true)
+    {
+        entity = 19936,
+        index = 0,
+    }
 
-    api.engine.getComponent(26058, api.type.ComponentType.TRANSPORT_NETWORK) (only the interesting bits)
+    
+    api.engine.getComponent(24657, api.type.ComponentType.TRANSPORT_NETWORK) (only the interesting bits)
     {
         nodes = {
             [1] = {
@@ -312,7 +356,7 @@ return {
                     },
                     [2] = {
                         new = nil,
-                        entity = 26058, -- edgeId
+                        entity = 24657, -- edgeId
                         index = 1,
                     },
                 },
@@ -321,12 +365,12 @@ return {
                 conns = {
                     [1] = {
                         new = nil,
-                        entity = 26058, -- edgeId
+                        entity = 24657, -- edgeId
                         index = 1,
                     },
                     [2] = {
                         new = nil,
-                        entity = 26058, -- edgeId
+                        entity = 24657, -- edgeId
                         index = 0,
                     },
                 },
@@ -335,12 +379,40 @@ return {
                 conns = {
                     [1] = {
                         new = nil,
-                        entity = 26058, -- edgeId
+                        entity = 24657,
                         index = 0,
                     },
                     [2] = {
                         new = nil,
-                        entity = 25491, -- baseEdge.node0
+                        entity = 24657,
+                        index = 2,
+                    },
+                },
+            },
+            [4] = {
+                conns = {
+                    [1] = {
+                        new = nil,
+                        entity = 24657,
+                        index = 2,
+                    },
+                    [2] = {
+                        new = nil,
+                        entity = 24657,
+                        index = 3,
+                    },
+                },
+            },
+            [5] = {
+                conns = {
+                    [1] = {
+                        new = nil,
+                        entity = 24657,
+                        index = 3,
+                    },
+                    [2] = {
+                        new = nil,
+                        entity = 25491, -- baseEdge.node1
                         index = 0,
                     },
                 },
@@ -350,6 +422,8 @@ return {
             [1] = -1,
             [2] = -1,
             [3] = -1,
+            [4] = -1,
+            [5] = -1,
         },
     }
 ]]
@@ -363,9 +437,17 @@ return {
 --[[
     LOLLO TODO investigate api.type.ComponentType.MOVE_PATH
 ]]
-                    local baseEdge = api.engine.getComponent(22883, api.type.ComponentType.BASE_EDGE)
 
+                -- by construction, I cannot have more than one priority signal on any edge.
+                -- However, different priority signals might have the same intersection,
+                -- so I need to squash the table
+                local intersectionNodeIds_indexed = {}
+                for _, signalId in pairs(era_c_signalIds) do
+                    local intersectionProps = signalHelpers.getNextIntersection(signalId)
+                    logger.print('intersectionProps.intersectionNodeId = ' .. (intersectionProps.intersectionNodeId or 'NIL'))
+                    if intersectionProps.intersectionNodeId ~= nil then intersectionNodeIds_indexed[intersectionProps.intersectionNodeId] = true end
                 end
+                logger.print('intersectionNodeIds_indexed =') logger.debugPrint(intersectionNodeIds_indexed)
 
                 local executionTime = math.ceil((os.clock() - _startTick) * 1000)
                 logger.print('Full update took ' .. executionTime .. 'ms')

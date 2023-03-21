@@ -27,7 +27,7 @@ function data()
                 cost = 0,
                 models = {
 					{
-						id = 'lollo_priority_signals/icon/red.mdl',
+						id = 'lollo_priority_signals/icon/blue.mdl',
                         transf = {1, 0, 0, 0,
                             0, 1, 0, 0,
                             0, 0, 1, 0,
@@ -35,7 +35,7 @@ function data()
 					},
                 },
             }
-
+			-- if (api and api.engine) then print('api.engine available') else print('api.engine not available') end
 			return result
 		end,
 
