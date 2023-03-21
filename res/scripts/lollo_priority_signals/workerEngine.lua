@@ -186,6 +186,11 @@ return {
                 logger.print('era_c_signalIds =') logger.debugPrint(era_c_signalIds)
                 -- logger.print('era_a_oneWay_signalIds =') logger.debugPrint(era_a_oneWay_signalIds)
                 -- logger.print('era_c_oneWay_signalIds =') logger.debugPrint(era_c_oneWay_signalIds)
+                local allPrioritySignalIds = {
+                    table.unpack(era_a_signalIds),
+                    table.unpack(era_c_signalIds)
+                }
+                logger.print('allPrioritySignalIds =') logger.debugPrint(allPrioritySignalIds)
 
 --[[
     From my priority light, I want to go ahead until the next traffic light or intersection, whichever comes first.
@@ -442,7 +447,9 @@ return {
                 -- However, different priority signals might have the same intersection,
                 -- so I need to squash the table
                 local intersectionNodeIds_InEdgeIds_indexed = {}
-                for _, signalId in pairs(era_c_signalIds) do
+                local prioritySignalIds_indexed = {}
+                for _, signalId in pairs(allPrioritySignalIds) do
+                    prioritySignalIds_indexed[signalId] = true
                     local intersectionProps = signalHelpers.getNextIntersectionBehind(signalId)
                     if intersectionProps.isFound then
                         if intersectionNodeIds_InEdgeIds_indexed[intersectionProps.nodeId] == nil then
@@ -454,7 +461,7 @@ return {
                 end
                 logger.print('intersectionNodeIds_InEdgeIds_indexed =') logger.debugPrint(intersectionNodeIds_InEdgeIds_indexed)
 
-                local edgeIdsGivingWay = signalHelpers.getNextLightsOrStations(intersectionNodeIds_InEdgeIds_indexed)
+                local edgeIdsGivingWay = signalHelpers.getNextLightsOrStations(intersectionNodeIds_InEdgeIds_indexed, prioritySignalIds_indexed)
                 logger.print('edgeIdsGivingWay =') logger.debugPrint(edgeIdsGivingWay)
 
 

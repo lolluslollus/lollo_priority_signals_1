@@ -207,20 +207,21 @@ funcs.hasOpposingOneWaySignals = function(baseEdge)
 end
 ---comment
 ---@param baseEdge integer
----@return boolean
-funcs.hasLights = function(baseEdge)
+---@return integer[]
+funcs.getLightIds = function(baseEdge)
+    local results = {}
     for _, object in pairs(baseEdge.objects) do
         local objectId = object[1]
         local signalList = api.engine.getComponent(objectId, api.type.ComponentType.SIGNAL_LIST)
         if signalList and signalList.signals and signalList.signals[1] then
             local signal = signalList.signals[1]
             if signal.type == 0 or signal.type == 1 then
-                return true
+                results[#results+1] = objectId
             end
         end
     end
 
-    return false
+    return results
 end
 ---@param signalId integer
 ---@return boolean
@@ -303,14 +304,20 @@ funcs.getNextIntersectionBehind = function(signalId)
     return intersectionProps
 end
 
-funcs.getNextLightsOrStations = function(intersectionNodeIds_InEdgeIds_indexed)
+funcs.getNextLightsOrStations = function(intersectionNodeIds_InEdgeIds_indexed, prioritySignalIds_indexed)
     local edgeIdsGivingWay = {}
 
     local _getNext4 = function(edgeId, commonNodeId, intersectionNodeId, count)
         logger.print('_getNext4 starting, edgeId = ' .. edgeId .. ', commonNodeId = ' .. commonNodeId)
         local baseEdge = api.engine.getComponent(edgeId, api.type.ComponentType.BASE_EDGE)
-        if funcs.hasLights(baseEdge) then -- this is it
+        local lightIdsInEdge = funcs.getLightIds(baseEdge)
+        if #lightIdsInEdge > 0 then -- this is it
             logger.print('this edge has lights')
+            -- get out if there is a priority signal on this edge, you don't want to compete.
+            -- If there are more signals, tough.
+            for _, lightId in pairs(lightIdsInEdge) do
+                if prioritySignalIds_indexed[lightId] then return { isGoAhead = false } end
+            end
             -- check if the intersection is reachable from both ends of the edge, there could be a light blocking it or a cross instead of a switch
             if funcs.getIsPathFromEdgeToNode(edgeId, intersectionNodeId, constants.maxDistanceFromIntersection) then
                 edgeIdsGivingWay[edgeId] = true
