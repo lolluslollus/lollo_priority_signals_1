@@ -1294,14 +1294,6 @@ helper.track = {
         end
         return results
     end,
-    ---comment
-    ---@param edgeId integer
-    ---@param nodeId integer
-    ---@param maxDistance number
-    ---@return integer[]
-    getTrackEdgeIdsBetweenEdgeAndNode = function(edgeId, nodeId, maxDistance)
-        return _getTrackEdgeIdsBetweenEdgeAndNode(edgeId, nodeId, maxDistance)
-    end,
     getTrackEdgeIdsBetweenNodeIds = function(_node1Id, _node2Id, maxDistance, isExtendedLog)
         if isExtendedLog then
             print('getTrackEdgeIdsBetweenNodeIds starting')

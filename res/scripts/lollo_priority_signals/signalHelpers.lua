@@ -123,6 +123,51 @@ local funcs = {
 
         return signalList.signals[1].type == 1
     end,
+    getIsPathFromEdgeToNode = function(edgeId, nodeId, maxDistance)
+        local counters = {}
+
+        -- local maxIndex = 0
+        -- local baseEdge = api.engine.getComponent(edgeId, api.type.ComponentType.BASE_EDGE)
+        -- for _, object in pairs(baseEdge.objects) do
+        --     local objectId = object[1]
+        --     local signalList = api.engine.getComponent(objectId, api.type.ComponentType.SIGNAL_LIST)
+        --     if signalList and signalList.signals and signalList.signals[1] then
+        --         local index = signalList.signals[1].edgePr.index
+        --         if index > maxIndex then maxIndex = index end
+        --     end
+        -- end
+
+        local maxIndex = #api.engine.getComponent(edgeId, api.type.ComponentType.TRANSPORT_NETWORK).edges - 1
+
+        for i = 0, maxIndex, 1 do
+            local edge1IdTyped = api.type.EdgeId.new(edgeId, i)
+            local edgeIdDir1False = api.type.EdgeIdDirAndLength.new(edge1IdTyped, false, 0)
+            local edgeIdDir1True = api.type.EdgeIdDirAndLength.new(edge1IdTyped, true, 0)
+            local node2Typed = api.type.NodeId.new(nodeId, 0)
+            local myPath = api.engine.util.pathfinding.findPath(
+                { edgeIdDir1False, edgeIdDir1True },
+                { node2Typed },
+                {
+                    api.type.enum.TransportMode.TRAIN,
+                    -- api.type.enum.TransportMode.ELECTRIC_TRAIN
+                },
+                maxDistance
+            )
+            counters[i] = 0
+            logger.print('index = ' .. i .. ', myPath =') logger.debugPrint(myPath)
+            for _, value in pairs(myPath) do
+                -- remove duplicates arising from traffic light or waypoints on edges, which have the same entity but a higher index.
+                if #counters == 0 or counters[#counters] ~= value.entity then
+                    counters[i] = counters[i] + 1
+                end
+            end
+        end
+
+        for i = 0, maxIndex, 1 do
+            if counters[i] == 0 then return false end
+        end
+        return true
+    end,
 }
 
 ---returns 0 for no one-way signal, 1 for one-way signal along, 2 for one-way signal against
@@ -266,16 +311,17 @@ funcs.getNextLightsOrStations = function(intersectionNodeIds_InEdgeIds_indexed)
         local baseEdge = api.engine.getComponent(edgeId, api.type.ComponentType.BASE_EDGE)
         if funcs.hasLights(baseEdge) then -- this is it
             logger.print('this edge has lights')
-            -- check if the intersection is reachable from both ends of the edge, I am not sure this func does that
-            local test = edgeUtils.track.getTrackEdgeIdsBetweenEdgeAndNode(edgeId, intersectionNodeId, constants.maxDistanceFromIntersection)
-            logger.print('edge ids from edgeId = ' .. edgeId .. ' to nodeId ' .. intersectionNodeId .. ' :') logger.debugPrint(test)
-            if #test > 0 then edgeIdsGivingWay[edgeId] = true end
+            -- check if the intersection is reachable from both ends of the edge, there could be a light blocking it or a cross instead of a switch
+            if funcs.getIsPathFromEdgeToNode(edgeId, intersectionNodeId, constants.maxDistanceFromIntersection) then
+                edgeIdsGivingWay[edgeId] = true
+            end
             return { isGoAhead = false }
         elseif edgeUtils.isEdgeFrozen(edgeId) then -- station or depot
             logger.print('this edge is frozen')
-            local test = edgeUtils.track.getTrackEdgeIdsBetweenEdgeAndNode(edgeId, intersectionNodeId, constants.maxDistanceFromIntersection)
-            logger.print('edge ids from edgeId = ' .. edgeId .. ' to nodeId ' .. intersectionNodeId .. ' :') logger.debugPrint(test)
-            if #test > 0 then edgeIdsGivingWay[edgeId] = true end
+            -- check if the intersection is reachable from both ends of the edge, there could be a light blocking it or a cross instead of a switch
+            if funcs.getIsPathFromEdgeToNode(edgeId, intersectionNodeId, constants.maxDistanceFromIntersection) then
+                edgeIdsGivingWay[edgeId] = true
+            end
             return { isGoAhead = false }
         else -- go ahead with the next edge(s)
             if baseEdge.node0 ~= commonNodeId and baseEdge.node1 ~= commonNodeId then
