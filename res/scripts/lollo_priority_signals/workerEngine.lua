@@ -202,12 +202,15 @@ return {
         If the edge has no normal lights, move on to the next edge until you come back here (if you do).
         If you are too far away from the intersection, return.
 
-        Now you have an edge with a normal light (if you got here):
+        Now you have an edge with a normal light (or a station edge) (if you got here):
         Seek the next edge (to give trains a chance to stop), at a minimum distance from the light.
         If there is an intersection, return.
 
         Place the edgeId in a table and check it at every tick with api.engine.system.transportVehicleSystem.getVehicles({edgeId}, true),
         against my edges that has priority. There will be a number of such edges before a priority light.
+
+        One thing may not work: a two-way signal marked as low prio might block the train on it,
+        unless I add a check to see if they are going toward the intersection (and block them) or not (and let them be)
     }
     edge 24657 has two lights and two waypoints.
     api.engine.getComponent(24657, api.type.ComponentType.BASE_EDGE)
