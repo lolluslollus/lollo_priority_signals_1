@@ -73,8 +73,8 @@ function data()
                 price = 3000,
             },
             description = {
-                description = _("Used as a priority path signal to regulate traffic or as a one-way signal."),
-                name = _("Priority Path Signal"),
+                description = _("Signal_Desc"),
+                name = _("Signal_Name"),
             },
             signal = {
                 type = "ONE_WAY_PATH_SIGNAL",
@@ -82,5 +82,4 @@ function data()
         },
         version = 1,
     }
-    end
-    
+end

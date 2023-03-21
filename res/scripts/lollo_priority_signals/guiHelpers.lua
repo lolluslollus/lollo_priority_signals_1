@@ -4,6 +4,8 @@ local stringUtils = require('lollo_priority_signals.stringUtils')
 
 
 local _texts = {
+    signalsOff = _('PrioritySignalsOff'),
+    signalsOn = _('PrioritySignalsOn'),
     warningWindowTitle = _('WarningWindowTitle'),
 }
 
@@ -20,19 +22,18 @@ local utils = {
         if isOn then
             -- img = api.gui.comp.ImageView.new('ui/design/components/checkbox_valid.tga')
             img = api.gui.comp.ImageView.new('ui/lollo_priority_signals/checkbox_valid.tga')
-            img:setTooltip(_texts.dynamicOn)
+            img:setTooltip(_texts.signalsOn)
             layout:addItem(img, api.gui.util.Alignment.HORIZONTAL, api.gui.util.Alignment.VERTICAL)
             -- layout:addItem(api.gui.comp.TextView.new(_texts.dynamicOn), api.gui.util.Alignment.HORIZONTAL, api.gui.util.Alignment.VERTICAL)
         else
             img = api.gui.comp.ImageView.new('ui/lollo_priority_signals/checkbox_invalid.tga')
-            img:setTooltip(_texts.dynamicOff)
+            img:setTooltip(_texts.signalsOff)
             layout:addItem(img, api.gui.util.Alignment.HORIZONTAL, api.gui.util.Alignment.VERTICAL)
             -- layout:addItem(api.gui.comp.TextView.new(_texts.dynamicOff), api.gui.util.Alignment.HORIZONTAL, api.gui.util.Alignment.VERTICAL)
         end
     end
 }
--- LOLLO TODO in the picker popup, add icons to tell if it is a port, an airport, a train station or a road station
--- UG TODO there is no obvious way of doing this
+
 local guiHelpers = {
     showWarningWindowWithMessage = function(text)
         local layout = api.gui.layout.BoxLayout.new('VERTICAL')

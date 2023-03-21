@@ -17,6 +17,7 @@ function data()
         load = function(loadedstate)
             -- fires once in the worker thread, at game load, and many times in the UI thread
             stateHelpers.loadState(loadedstate)
+            workerEngine.load()
         end,
 
         update = function()

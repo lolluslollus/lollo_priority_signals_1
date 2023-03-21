@@ -1,0 +1,77 @@
+function data()
+    return {
+        boundingInfo = {
+            bbMax = { 0.10372308641672, -1.6578999757767, 4.8158497810364, },
+            bbMin = { -0.16499999165535, -3.4754700660706, -0.18500000238419, },
+        },
+        collider = {
+            params = {
+                halfExtents = { 0.13436153531075, 0.90878504514694, 2.500424861908, },
+            },
+            transf = { 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, },
+            type = "BOX",
+        },
+        lods = {
+            {
+                node = {
+                    children = {
+                        {
+                            materials = { "railroad/signal_path.mtl", },
+                            mesh = "railroad/signal_path_a/signal_path_a_lod0.msh",
+                            name = "signal_path_a",
+                            transf = { -1, 1.2246468525852e-16, 1.2246468525852e-16, 0, -1.2246468525852e-16, -1, -1.2246468525852e-16, 0, 1.2246468525852e-16, -1.2246468525852e-16, 1, 0, -1.8607282295593e-16, -2, -1.8607282295593e-16, 1, },
+                        },
+                        {
+                            animations = {
+                                green = {
+                                    params = {
+                                        id = "railroad/signal_path_a_one_way/green/signal_path_a_signal.ani",
+                                    },
+                                    type = "FILE_REF",
+                                },
+                                red = {
+                                    params = {
+                                        id = "railroad/signal_path_a_one_way/red/signal_path_a_signal.ani",
+                                    },
+                                    type = "FILE_REF",
+                                },
+                            },
+                            materials = { "railroad/signal_path.mtl", },
+                            mesh = "railroad/signal_path_a/signal_path_a_signal_lod0.msh",
+                            name = "signal_path_a_signal",
+                            transf = { -1, 1.2246468525852e-16, 1.2246468525852e-16, 0, -1.2246468525852e-16, -1, -1.2246468525852e-16, 0, 1.2246468525852e-16, -1.2246468525852e-16, 1, 0, 3.6642899408105e-16, -2, 4.511519908905, 1, },
+                        },
+                        {
+                            materials = { "railroad/signal_path.mtl", },
+                            mesh = "railroad/signal_path_a/signal_path_a_oneway_lod0.msh",
+                            name = "signal_path_a_oneway",
+                            transf = { -1, 1.2246468525852e-16, 1.2246468525852e-16, 0, -1.2246468525852e-16, -1, -1.2246468525852e-16, 0, 1.2246468525852e-16, -1.2246468525852e-16, 1, 0, -1.8607282295593e-16, -2, -1.8607282295593e-16, 1, },
+                        },
+                    },
+                    name = "RootNode",
+                    transf = { 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, },
+                },
+                static = false,
+                visibleFrom = 0,
+                visibleTo = 506.71264648438,
+            },
+        },
+        metadata = {
+            availability = {
+                yearFrom = 0,
+                yearTo = 1925,
+            },
+            cost = {
+                price = 3000,
+            },
+            description = {
+                description = _("Signal_Desc"),
+                name = _("Signal_Name"),
+            },
+            signal = {
+                type = "ONE_WAY_PATH_SIGNAL",
+            },
+        },
+        version = 1,
+    }
+end
