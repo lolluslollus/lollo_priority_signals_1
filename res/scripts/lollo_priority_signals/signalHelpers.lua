@@ -138,18 +138,19 @@ funcs.hasOpposingOneWaySignals = function(baseEdge)
 
     return false
 end
+---@param signalId integer
+---@return boolean
+---@return integer
 funcs.isOneWaySignalAgainstEdgeDirection = function(signalId)
     local signalList = api.engine.getComponent(signalId, api.type.ComponentType.SIGNAL_LIST)
     local signal = signalList.signals[1]
     local edgeId = signal.edgePr.entity
-    logger.print('isOneWaySignalAgainstEdgeDirection found edgeId = ' .. edgeId)
 
     -- signal.type == 0 -- two-way signal
     -- signal.type == 1 -- one-way signal
     -- signal.type == 1 -- waypoint
     if signal.type == 1 then -- one-way signal
         local signalAgainst = api.engine.system.signalSystem.getSignal(api.type.EdgeId.new(edgeId, signal.edgePr.index), false)
-        logger.print('signalAgainst =') logger.debugPrint(signalAgainst)
         if signalAgainst.entity == signalId then return true, edgeId end
         -- local signalAlong = api.engine.system.signalSystem.getSignal(api.type.EdgeId.new(edgeId_, signal.edgePr.index), true)
         -- if signalAlong.entity == edgeObjectId then isSignalAlong = true end
@@ -157,6 +158,8 @@ funcs.isOneWaySignalAgainstEdgeDirection = function(signalId)
 
     return false, edgeId
 end
+---@param signalId integer
+---@return {isGoAhead: boolean, edgeId: integer, startNodeId: integer, intersectionNodeId: integer}
 funcs.getNextIntersection = function(signalId)
     logger.print('getNextIntersection starting, signalId = ' .. signalId)
     local isSignalAgainst, edgeId = funcs.isOneWaySignalAgainstEdgeDirection(signalId)
