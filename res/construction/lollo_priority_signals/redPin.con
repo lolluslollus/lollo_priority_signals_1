@@ -1,0 +1,46 @@
+function data()
+    return {
+        type = 'ASSET_DEFAULT',
+		availability = {
+			yearFrom = -1,
+			yearTo = -1,
+		},
+        categories = { 'lollo-priority-signals' },
+		description = {
+			name = _('Dummy'),
+			description = _('Dummy'),
+            -- icon = 'ui/dummy',
+		},
+		order = 1110,
+		autoRemovable = false,
+        -- buildMode = 'MULTI',
+		skipCollision = true,
+        snapping = {
+			rail = false,
+			road = false,
+			water = false
+		},
+		params = {},
+		updateFn = function(params)
+            local result = {
+                colliders = {},
+                cost = 0,
+                models = {
+					{
+						id = 'lollo_priority_signals/icon/red.mdl',
+                        transf = {1, 0, 0, 0,
+                            0, 1, 0, 0,
+                            0, 0, 1, 0,
+                            0, 0, 0, 1},
+					},
+                },
+            }
+
+			return result
+		end,
+
+        upgradeFn = function(params)
+            return {}
+        end,
+	}
+end
