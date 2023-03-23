@@ -820,8 +820,7 @@ return {
                                                 if prevNodeId == nodeIdTowardsIntersection then
                                                     logger.print('vehicle ' .. vehicleId ' not stopped coz is going away from the intersection')
                                                     break
-                                                end
-                                                if nextNodeId == nodeIdTowardsIntersection then
+                                                elseif nextNodeId == nodeIdTowardsIntersection then
                                                     if not(api.engine.getComponent(vehicleId, api.type.ComponentType.TRANSPORT_VEHICLE).userStopped) then
                                                         -- api.cmd.sendCommand(api.cmd.make.reverseVehicle(vehicleId)) -- this is to stop it at once
                                                         api.cmd.sendCommand(api.cmd.make.setUserStopped(vehicleId, true))
