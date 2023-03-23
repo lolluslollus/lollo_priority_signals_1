@@ -21,8 +21,10 @@ local transfUtilsUG = require('transf')
 
 ]]
 local  _signalModelId_EraA, _signalModelId_EraC, _signalModelId_OneWay_EraA, _signalModelId_OneWay_EraC
+
 local signalIds_indexedBy_intersectionNodeId_inEdgeId = {}
 local edgeIdsGivingWay, edgeIdsGivingWay_indexedBy_signalId -- the first is only for testing
+local stoppedVehicleIds = {}
 
 local _texts = {
 
@@ -498,17 +500,349 @@ return {
                                 logger.print('vehicleIdsNearPrioritySignals =') logger.debugPrint(vehicleIdsNearPrioritySignals)
                                 logger.print('#vehicleIdsNearPrioritySignals = ' .. #vehicleIdsNearPrioritySignals)
                                 if #vehicleIdsNearPrioritySignals > 0 then
-                                    for giveWayEdgeId, _ in pairs(edgeIdsGivingWay_indexedBy_signalId[signalId]) do
+                                    for giveWayEdgeId, nodeIdTowardsIntersection in pairs(edgeIdsGivingWay_indexedBy_signalId[signalId]) do
                                         local vehicleIdsNearGiveWaySignals = api.engine.system.transportVehicleSystem.getVehicles({giveWayEdgeId}, false)
                                         logger.print('vehicleIdsNearGiveWaySignals =') logger.debugPrint(vehicleIdsNearGiveWaySignals)
-                                        if #vehicleIdsNearGiveWaySignals > 0 then
-                                            -- LOLLO TODO stop those vehicles with
-                                            -- api.cmd.sendCommand(api.cmd.make.setUserStopped(vehicleId, true))
+                                        for _, vehicleId in pairs(vehicleIdsNearGiveWaySignals) do
+--[[
+                                            -- LOLLO TODO only stop those vehicles that are heading for the intersection
+                                            mp = api.engine.getComponent(veId, api.type.ComponentType.MOVE_PATH)
+                                            {
+                                                path = {
+                                                    edges = {
+                                                    [1] = {
+                                                        new = nil,
+                                                        edgeId = {
+                                                        new = nil,
+                                                        entity = 20169,
+                                                        index = 0,
+                                                        },
+                                                        dir = true,
+                                                        __doc__ = {
+                                                        new = "(EdgeId edgeId, Bool dir) -> EdgeIdDir",
+                                                        },
+                                                    },
+                                                    [2] = {
+                                                        new = nil,
+                                                        edgeId = {
+                                                        new = nil,
+                                                        entity = 20169,
+                                                        index = 1,
+                                                        },
+                                                        dir = true,
+                                                        __doc__ = {
+                                                        new = "(EdgeId edgeId, Bool dir) -> EdgeIdDir",
+                                                        },
+                                                    },
+                                                    [3] = {
+                                                        new = nil,
+                                                        edgeId = {
+                                                        new = nil,
+                                                        entity = 19959,
+                                                        index = 0,
+                                                        },
+                                                        dir = true,
+                                                        __doc__ = {
+                                                        new = "(EdgeId edgeId, Bool dir) -> EdgeIdDir",
+                                                        },
+                                                    },
+                                                    [4] = {
+                                                        new = nil,
+                                                        edgeId = {
+                                                        new = nil,
+                                                        entity = 19959,
+                                                        index = 1,
+                                                        },
+                                                        dir = true,
+                                                        __doc__ = {
+                                                        new = "(EdgeId edgeId, Bool dir) -> EdgeIdDir",
+                                                        },
+                                                    },
+                                                    [5] = {
+                                                        new = nil,
+                                                        edgeId = {
+                                                        new = nil,
+                                                        entity = 19959,
+                                                        index = 2,
+                                                        },
+                                                        dir = true,
+                                                        __doc__ = {
+                                                        new = "(EdgeId edgeId, Bool dir) -> EdgeIdDir",
+                                                        },
+                                                    },
+                                                    [6] = {
+                                                        new = nil,
+                                                        edgeId = {
+                                                        new = nil,
+                                                        entity = 25535,
+                                                        index = 0,
+                                                        },
+                                                        dir = true,
+                                                        __doc__ = {
+                                                        new = "(EdgeId edgeId, Bool dir) -> EdgeIdDir",
+                                                        },
+                                                    },
+                                                    [7] = {
+                                                        new = nil,
+                                                        edgeId = {
+                                                        new = nil,
+                                                        entity = 25535,
+                                                        index = 1,
+                                                        },
+                                                        dir = true,
+                                                        __doc__ = {
+                                                        new = "(EdgeId edgeId, Bool dir) -> EdgeIdDir",
+                                                        },
+                                                    },
+                                                    [8] = {
+                                                        new = nil,
+                                                        edgeId = {
+                                                        new = nil,
+                                                        entity = 25517,
+                                                        index = 1,
+                                                        },
+                                                        dir = true,
+                                                        __doc__ = {
+                                                        new = "(EdgeId edgeId, Bool dir) -> EdgeIdDir",
+                                                        },
+                                                    },
+                                                    [9] = {
+                                                        new = nil,
+                                                        edgeId = {
+                                                        new = nil,
+                                                        entity = 25519,
+                                                        index = 0,
+                                                        },
+                                                        dir = false,
+                                                        __doc__ = {
+                                                        new = "(EdgeId edgeId, Bool dir) -> EdgeIdDir",
+                                                        },
+                                                    },
+                                                    [10] = {
+                                                        new = nil,
+                                                        edgeId = {
+                                                        new = nil,
+                                                        entity = 25487,
+                                                        index = 1,
+                                                        },
+                                                        dir = false,
+                                                        __doc__ = {
+                                                        new = "(EdgeId edgeId, Bool dir) -> EdgeIdDir",
+                                                        },
+                                                    },
+                                                    [11] = {
+                                                        new = nil,
+                                                        edgeId = {
+                                                        new = nil,
+                                                        entity = 25487,
+                                                        index = 3,
+                                                        },
+                                                        dir = true,
+                                                        __doc__ = {
+                                                        new = "(EdgeId edgeId, Bool dir) -> EdgeIdDir",
+                                                        },
+                                                    },
+                                                    [12] = {
+                                                        new = nil,
+                                                        edgeId = {
+                                                        new = nil,
+                                                        entity = 25507,
+                                                        index = 0,
+                                                        },
+                                                        dir = false,
+                                                        __doc__ = {
+                                                        new = "(EdgeId edgeId, Bool dir) -> EdgeIdDir",
+                                                        },
+                                                    },
+                                                    [13] = {
+                                                        new = nil,
+                                                        edgeId = {
+                                                        new = nil,
+                                                        entity = 25468,
+                                                        index = 0,
+                                                        },
+                                                        dir = false,
+                                                        __doc__ = {
+                                                        new = "(EdgeId edgeId, Bool dir) -> EdgeIdDir",
+                                                        },
+                                                    },
+                                                    [14] = {
+                                                        new = nil,
+                                                        edgeId = {
+                                                        new = nil,
+                                                        entity = 25486,
+                                                        index = 0,
+                                                        },
+                                                        dir = false,
+                                                        __doc__ = {
+                                                        new = "(EdgeId edgeId, Bool dir) -> EdgeIdDir",
+                                                        },
+                                                    },
+                                                    [15] = {
+                                                        new = nil,
+                                                        edgeId = {
+                                                        new = nil,
+                                                        entity = 25513,
+                                                        index = 0,
+                                                        },
+                                                        dir = false,
+                                                        __doc__ = {
+                                                        new = "(EdgeId edgeId, Bool dir) -> EdgeIdDir",
+                                                        },
+                                                    },
+                                                    [16] = {
+                                                        new = nil,
+                                                        edgeId = {
+                                                        new = nil,
+                                                        entity = 25450,
+                                                        index = 0,
+                                                        },
+                                                        dir = false,
+                                                        __doc__ = {
+                                                        new = "(EdgeId edgeId, Bool dir) -> EdgeIdDir",
+                                                        },
+                                                    },
+                                                    [17] = {
+                                                        new = nil,
+                                                        edgeId = {
+                                                        new = nil,
+                                                        entity = 22756,
+                                                        index = 0,
+                                                        },
+                                                        dir = true,
+                                                        __doc__ = {
+                                                        new = "(EdgeId edgeId, Bool dir) -> EdgeIdDir",
+                                                        },
+                                                    },
+                                                    [18] = {
+                                                        new = nil,
+                                                        edgeId = {
+                                                        new = nil,
+                                                        entity = 22786,
+                                                        index = 0,
+                                                        },
+                                                        dir = true,
+                                                        __doc__ = {
+                                                        new = "(EdgeId edgeId, Bool dir) -> EdgeIdDir",
+                                                        },
+                                                    },
+                                                    [19] = {
+                                                        new = nil,
+                                                        edgeId = {
+                                                        new = nil,
+                                                        entity = 22789,
+                                                        index = 0,
+                                                        },
+                                                        dir = true,
+                                                        __doc__ = {
+                                                        new = "(EdgeId edgeId, Bool dir) -> EdgeIdDir",
+                                                        },
+                                                    },
+                                                    [20] = {
+                                                        new = nil,
+                                                        edgeId = {
+                                                        new = nil,
+                                                        entity = 22853,
+                                                        index = 0,
+                                                        },
+                                                        dir = true,
+                                                        __doc__ = {
+                                                        new = "(EdgeId edgeId, Bool dir) -> EdgeIdDir",
+                                                        },
+                                                    },
+                                                    },
+                                                    endOffset = 2,
+                                                    terminalDecisionOffset = 13,
+                                                },
+                                                endParam = 0,
+                                                endPos = 0,
+                                                state = 0,
+                                                blocked = 0,
+                                                allowEarlyArrival = false,
+                                                reverse = false,
+                                                dyn = {
+                                                    pathPos = {
+                                                    edgeIndex = 16, -- base 0!
+                                                    pos01 = 0.99592667818069,
+                                                    pos = 72.860328674316,
+                                                    },
+                                                    pathPos0 = nil,
+                                                    speed = 21.199125289917,
+                                                    speed0 = nil,
+                                                    brakeDecel = 2.6271903514862,
+                                                    accel = -2.6271903514862,
+                                                    timeUntilAccel = 0,
+                                                    timeStanding = 0,
+                                                    timeToIgnore = 0,
+                                                    approachingStation = true,
+                                                },
+                                                dyn0 = {
+                                                    pathPos = {
+                                                    edgeIndex = 16, -- base 0!
+                                                    pos01 = 0.99592667818069,
+                                                    pos = 72.860328674316,
+                                                    },
+                                                    pathPos0 = nil,
+                                                    speed = 21.199125289917,
+                                                    speed0 = nil,
+                                                    brakeDecel = 2.6271903514862,
+                                                    accel = -2.6271903514862,
+                                                    timeUntilAccel = 0,
+                                                    timeStanding = 0,
+                                                    timeToIgnore = 0,
+                                                    approachingStation = true,
+                                                },
+                                            }
+
+                                            -- this tells where the vehicle is:
+                                            mp.path.edges[mp.dyn.pathPos.edgeIndex + 1] =
+                                            {
+                                                new = nil,
+                                                edgeId = {
+                                                    new = nil,
+                                                    entity = 22756,
+                                                    index = 0,
+                                                },
+                                                dir = true, -- true if the train goes from baseEdge.node0 to baseEdge.node1, eg if it follows the moving axes
+                                                __doc__ = {
+                                                    new = "(EdgeId edgeId, Bool dir) -> EdgeIdDir",
+                                                },
+                                            }
+]]
+                                            if not(api.engine.getComponent(vehicleId, api.type.ComponentType.TRANSPORT_VEHICLE).userStopped) then
+                                                local movePath = api.engine.getComponent(vehicleId, api.type.ComponentType.MOVE_PATH)
+                                                local pathEdgeCount = #movePath.path.edges
+                                                local baseEdge = api.engine.getComponent(giveWayEdgeId, api.type.ComponentType.BASE_EDGE)
+                                                for p = movePath.dyn.pathPos.edgeIndex + 1, pathEdgeCount, 1 do
+                                                    local currentMovePathBit = movePath.path.edges[p]
+                                                    -- local baseEdge = api.engine.getComponent(currentMovePathBit.edgeId.entity, api.type.ComponentType.BASE_EDGE)
+                                                    local nextNodeId = currentMovePathBit.dir and baseEdge.node1 or baseEdge.node0
+                                                    local prevNodeId = currentMovePathBit.dir and baseEdge.node0 or baseEdge.node1
+                                                    if prevNodeId == nodeIdTowardsIntersection then
+                                                        logger.print('vehicle ' .. vehicleId ' not stopped coz is going away from the intersection')
+                                                        break
+                                                    end
+                                                    if nextNodeId == nodeIdTowardsIntersection then
+                                                        -- api.cmd.sendCommand(api.cmd.make.reverseVehicle(vehicleId)) -- this is to stop it at once
+                                                        api.cmd.sendCommand(api.cmd.make.setUserStopped(vehicleId, true))
+                                                        -- api.cmd.sendCommand(api.cmd.make.reverseVehicle(vehicleId)) -- this is to stop it at once
+                                                        stoppedVehicleIds[vehicleId] = _gameTime_msec
+                                                        logger.print('vehicle ' .. vehicleId ' stopped')
+                                                        break
+                                                    end
+                                                end
+                                            end
                                         end
                                     end
                                 end
                             end
                         end
+                    end
+                end
+                for vehicleId, gameTimeMsec in pairs(stoppedVehicleIds) do
+                    if gameTimeMsec ~= _gameTime_msec then
+                        api.cmd.sendCommand(api.cmd.make.setUserStopped(vehicleId, false))
+                        logger.print('vehicle ' .. vehicleId ' restarted')
                     end
                 end
 
