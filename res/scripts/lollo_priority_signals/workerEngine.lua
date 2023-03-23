@@ -809,27 +809,29 @@ return {
                                                 },
                                             }
 ]]
-                                            if not(api.engine.getComponent(vehicleId, api.type.ComponentType.TRANSPORT_VEHICLE).userStopped) then
-                                                local movePath = api.engine.getComponent(vehicleId, api.type.ComponentType.MOVE_PATH)
-                                                local pathEdgeCount = #movePath.path.edges
-                                                local baseEdge = api.engine.getComponent(giveWayEdgeId, api.type.ComponentType.BASE_EDGE)
-                                                for p = movePath.dyn.pathPos.edgeIndex + 1, pathEdgeCount, 1 do
-                                                    local currentMovePathBit = movePath.path.edges[p]
-                                                    -- local baseEdge = api.engine.getComponent(currentMovePathBit.edgeId.entity, api.type.ComponentType.BASE_EDGE)
-                                                    local nextNodeId = currentMovePathBit.dir and baseEdge.node1 or baseEdge.node0
-                                                    local prevNodeId = currentMovePathBit.dir and baseEdge.node0 or baseEdge.node1
-                                                    if prevNodeId == nodeIdTowardsIntersection then
-                                                        logger.print('vehicle ' .. vehicleId ' not stopped coz is going away from the intersection')
-                                                        break
-                                                    end
-                                                    if nextNodeId == nodeIdTowardsIntersection then
+                                            local movePath = api.engine.getComponent(vehicleId, api.type.ComponentType.MOVE_PATH)
+                                            local pathEdgeCount = #movePath.path.edges
+                                            local baseEdge = api.engine.getComponent(giveWayEdgeId, api.type.ComponentType.BASE_EDGE)
+                                            for p = movePath.dyn.pathPos.edgeIndex + 1, pathEdgeCount, 1 do
+                                                local currentMovePathBit = movePath.path.edges[p]
+                                                -- local baseEdge = api.engine.getComponent(currentMovePathBit.edgeId.entity, api.type.ComponentType.BASE_EDGE)
+                                                local nextNodeId = currentMovePathBit.dir and baseEdge.node1 or baseEdge.node0
+                                                local prevNodeId = currentMovePathBit.dir and baseEdge.node0 or baseEdge.node1
+                                                if prevNodeId == nodeIdTowardsIntersection then
+                                                    logger.print('vehicle ' .. vehicleId ' not stopped coz is going away from the intersection')
+                                                    break
+                                                end
+                                                if nextNodeId == nodeIdTowardsIntersection then
+                                                    if not(api.engine.getComponent(vehicleId, api.type.ComponentType.TRANSPORT_VEHICLE).userStopped) then
                                                         -- api.cmd.sendCommand(api.cmd.make.reverseVehicle(vehicleId)) -- this is to stop it at once
                                                         api.cmd.sendCommand(api.cmd.make.setUserStopped(vehicleId, true))
                                                         -- api.cmd.sendCommand(api.cmd.make.reverseVehicle(vehicleId)) -- this is to stop it at once
-                                                        stoppedVehicleIds[vehicleId] = _gameTime_msec
                                                         logger.print('vehicle ' .. vehicleId ' stopped')
-                                                        break
+                                                    else
+                                                        logger.print('vehicle ' .. vehicleId ' already stopped')
                                                     end
+                                                    stoppedVehicleIds[vehicleId] = _gameTime_msec
+                                                    break
                                                 end
                                             end
                                         end
