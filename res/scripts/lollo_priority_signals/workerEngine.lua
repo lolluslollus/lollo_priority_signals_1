@@ -21,6 +21,8 @@ local transfUtilsUG = require('transf')
 
 ]]
 local  _signalModelId_EraA, _signalModelId_EraC, _signalModelId_OneWay_EraA, _signalModelId_OneWay_EraC
+local signalIds_indexedBy_intersectionNodeId_inEdgeId = {}
+local edgeIdsGivingWay, edgeIdsGivingWay_indexedBy_signalId -- the first is only for testing
 
 local _texts = {
 
@@ -154,43 +156,42 @@ return {
         local state = stateHelpers.getState()
         if not(state.is_on) then return end
 
-        local _gameTime = api.engine.getComponent(api.engine.util.getWorld(), api.type.ComponentType.GAME_TIME).gameTime
-        if not(_gameTime) then logger.err('update() cannot get time') return end
-
-        if math.fmod(_gameTime, constants.refreshPeriodMsec) ~= 0 then
-            -- logger.print('skipping')
-        return end
-        -- logger.print('doing it')
+        local _gameTime_msec = api.engine.getComponent(api.engine.util.getWorld(), api.type.ComponentType.GAME_TIME).gameTime
+        if not(_gameTime_msec) then logger.err('update() cannot get time') return end
 
         xpcall(
             function()
                 local _startTick = os.clock()
 
-                local _clockTimeSec = math.floor(_gameTime / 1000)
+                local _gameTime_sec = math.floor(_gameTime_msec / 1000)
                 -- leave if paused
-                if _clockTimeSec == state.world_time_sec then return end
+                if _gameTime_sec == state.world_time_sec then return end
+                -- remember game time for next cycle, its only purpose is to break while paused
+                state.world_time_sec = _gameTime_sec
 
-                state.world_time_sec = _clockTimeSec
+                ---@type table<integer, integer> --signalId, edgeId
+                local _edgeObject2EdgeMap = api.engine.system.streetSystem.getEdgeObject2EdgeMap()
 
-                --[[
-                    LOLLO NOTE one-way lights are read as two-way lights,
-                    and they don't appear in the menu if they have no two-way counterparts, or if those counterparts have expired.
-                ]]
-                -- local era_a_signalIds = signalHelpers.getAllEdgeObjectsAndEdgesWithModelId(_signalModelId_EraA)
-                -- local era_c_signalIds = signalHelpers.getAllEdgeObjectsAndEdgesWithModelId(_signalModelId_EraC)
-                local era_a_signalIds = signalHelpers.getAllEdgeObjectsWithModelId(_signalModelId_EraA)
-                local era_c_signalIds = signalHelpers.getAllEdgeObjectsWithModelId(_signalModelId_EraC)
-                -- local era_a_oneWay_signalIds = signalHelpers.getAllEdgeObjectsAndEdgesWithModelId(_signalModelId_OneWay_EraA)
-                -- local era_c_oneWay_signalIds = signalHelpers.getAllEdgeObjectsAndEdgesWithModelId(_signalModelId_OneWay_EraC)
-                logger.print('era_a_signalIds =') logger.debugPrint(era_a_signalIds)
-                logger.print('era_c_signalIds =') logger.debugPrint(era_c_signalIds)
-                -- logger.print('era_a_oneWay_signalIds =') logger.debugPrint(era_a_oneWay_signalIds)
-                -- logger.print('era_c_oneWay_signalIds =') logger.debugPrint(era_c_oneWay_signalIds)
-                local allPrioritySignalIds = {
-                    table.unpack(era_a_signalIds),
-                    table.unpack(era_c_signalIds)
-                }
-                logger.print('allPrioritySignalIds =') logger.debugPrint(allPrioritySignalIds)
+                if math.fmod(_gameTime_msec, constants.refreshGraphPeriodMsec) == 0 then
+                    --[[
+                        LOLLO NOTE one-way lights are read as two-way lights,
+                        and they don't appear in the menu if they have no two-way counterparts, or if those counterparts have expired.
+                    ]]
+                    -- local era_a_signalIds = signalHelpers.getAllEdgeObjectsAndEdgesWithModelId(_signalModelId_EraA)
+                    -- local era_c_signalIds = signalHelpers.getAllEdgeObjectsAndEdgesWithModelId(_signalModelId_EraC)
+                    local era_a_signalIds = signalHelpers.getAllEdgeObjectsWithModelId(_signalModelId_EraA)
+                    local era_c_signalIds = signalHelpers.getAllEdgeObjectsWithModelId(_signalModelId_EraC)
+                    -- local era_a_oneWay_signalIds = signalHelpers.getAllEdgeObjectsAndEdgesWithModelId(_signalModelId_OneWay_EraA)
+                    -- local era_c_oneWay_signalIds = signalHelpers.getAllEdgeObjectsAndEdgesWithModelId(_signalModelId_OneWay_EraC)
+                    logger.print('era_a_signalIds =') logger.debugPrint(era_a_signalIds)
+                    logger.print('era_c_signalIds =') logger.debugPrint(era_c_signalIds)
+                    -- logger.print('era_a_oneWay_signalIds =') logger.debugPrint(era_a_oneWay_signalIds)
+                    -- logger.print('era_c_oneWay_signalIds =') logger.debugPrint(era_c_oneWay_signalIds)
+                    local allPrioritySignalIds = {
+                        table.unpack(era_a_signalIds),
+                        table.unpack(era_c_signalIds)
+                    }
+                    logger.print('allPrioritySignalIds =') logger.debugPrint(allPrioritySignalIds)
 
 --[[
     From my priority light, I want to go ahead until the next traffic light or intersection, whichever comes first.
@@ -446,31 +447,74 @@ return {
     LOLLO TODO investigate api.type.ComponentType.MOVE_PATH
 ]]
 
-                -- by construction, I cannot have more than one priority signal on any edge.
-                -- However, different priority signals might have the same intersection,
-                -- so I need to squash the table
-                local intersectionNodeIds_InEdgeIds_indexed = {}
-                local prioritySignalIds_indexed = {}
-                for _, signalId in pairs(allPrioritySignalIds) do
-                    prioritySignalIds_indexed[signalId] = true
-                    local intersectionProps = signalHelpers.getNextIntersectionBehind(signalId)
-                    if intersectionProps.isFound then
-                        if intersectionNodeIds_InEdgeIds_indexed[intersectionProps.nodeId] == nil then
-                            intersectionNodeIds_InEdgeIds_indexed[intersectionProps.nodeId] = {[intersectionProps.inEdgeId] = true}
-                        else
-                            intersectionNodeIds_InEdgeIds_indexed[intersectionProps.nodeId][intersectionProps.inEdgeId] = true
+
+                    ---@type table<integer, integer> --signalId, edgeId
+                    local edgeIdsWithPrioritySignals_indexedBy_signalId = {}
+                    -- nodeId, inEdgeId, signalId
+                    -- By construction, I cannot have more than one priority signal on any edge.
+                    -- However, different priority signals might share the same intersection node,
+                    -- so I have a table of tables.
+                    ---@type table<integer, table<integer, integer[]>>
+                    signalIds_indexedBy_intersectionNodeId_inEdgeId = {}
+                    for _, signalId in pairs(allPrioritySignalIds) do
+                        edgeIdsWithPrioritySignals_indexedBy_signalId[signalId] = _edgeObject2EdgeMap[signalId]
+                        local intersectionProps = signalHelpers.getNextIntersectionBehind(signalId)
+                        if intersectionProps.isFound then
+                            if signalIds_indexedBy_intersectionNodeId_inEdgeId[intersectionProps.nodeId] == nil then
+                                signalIds_indexedBy_intersectionNodeId_inEdgeId[intersectionProps.nodeId] = {[intersectionProps.inEdgeId] = {signalId}}
+                            else
+                                table.insert(
+                                    signalIds_indexedBy_intersectionNodeId_inEdgeId[intersectionProps.nodeId][intersectionProps.inEdgeId],
+                                    signalId
+                            )
+                            end
+                        end
+                    end
+                    logger.print('signalIds_indexedBy_intersectionNodeId_inEdgeId =') logger.debugPrint(signalIds_indexedBy_intersectionNodeId_inEdgeId)
+                    logger.print('edgeIdsWithPrioritySignals_indexedBy_signalId =') logger.debugPrint(edgeIdsWithPrioritySignals_indexedBy_signalId)
+
+                    edgeIdsGivingWay, edgeIdsGivingWay_indexedBy_signalId = signalHelpers.getNextLightsOrStations(signalIds_indexedBy_intersectionNodeId_inEdgeId, edgeIdsWithPrioritySignals_indexedBy_signalId)
+                    logger.print('edgeIdsGivingWay =') logger.debugPrint(edgeIdsGivingWay)
+                    logger.print('edgeIdsGivingWay_indexedBy_signalId =') logger.debugPrint(edgeIdsGivingWay_indexedBy_signalId)
+
+                    if logger.isExtendedLog() then
+                        local executionTime = math.ceil((os.clock() - _startTick) * 1000)
+                        logger.print('Finding edges and nodes took ' .. executionTime .. 'ms')
+                    end
+                end -- update graph
+
+                for _, signalIds_indexedBy_inEdgeId in pairs(signalIds_indexedBy_intersectionNodeId_inEdgeId) do
+                    logger.print('signalIds_indexedBy_inEdgeId =') logger.debugPrint(signalIds_indexedBy_inEdgeId)
+                    for inEdgeId, signalIds in pairs(signalIds_indexedBy_inEdgeId) do
+                        logger.print('signalIds =') logger.debugPrint(signalIds)
+                        for _, signalId in pairs(signalIds) do
+                            logger.print('signalId =') logger.debugPrint(signalId)
+                            logger.print('edgeIdsGivingWay_indexedBy_signalId[signalId] =') logger.debugPrint(edgeIdsGivingWay_indexedBy_signalId[signalId])
+                            if edgeIdsGivingWay_indexedBy_signalId[signalId] ~= nil then
+                                local prioritySignalEdgeId = _edgeObject2EdgeMap[signalId]
+                                local edgeIds = prioritySignalEdgeId == inEdgeId and {inEdgeId} or {prioritySignalEdgeId, inEdgeId}
+                                logger.print('edgeIds for detecting priority trains =') logger.debugPrint(edgeIds)
+                                local vehicleIdsNearPrioritySignals = api.engine.system.transportVehicleSystem.getVehicles(edgeIds, false)
+                                logger.print('vehicleIdsNearPrioritySignals =') logger.debugPrint(vehicleIdsNearPrioritySignals)
+                                logger.print('#vehicleIdsNearPrioritySignals = ' .. #vehicleIdsNearPrioritySignals)
+                                if #vehicleIdsNearPrioritySignals > 0 then
+                                    for giveWayEdgeId, _ in pairs(edgeIdsGivingWay_indexedBy_signalId[signalId]) do
+                                        local vehicleIdsNearGiveWaySignals = api.engine.system.transportVehicleSystem.getVehicles({giveWayEdgeId}, false)
+                                        logger.print('vehicleIdsNearGiveWaySignals =') logger.debugPrint(vehicleIdsNearGiveWaySignals)
+                                        if #vehicleIdsNearGiveWaySignals > 0 then
+                                            -- LOLLO TODO stop those vehicles with
+                                            -- api.cmd.sendCommand(api.cmd.make.setUserStopped(vehicleId, true))
+                                        end
+                                    end
+                                end
+                            end
                         end
                     end
                 end
-                logger.print('intersectionNodeIds_InEdgeIds_indexed =') logger.debugPrint(intersectionNodeIds_InEdgeIds_indexed)
-
-                local edgeIdsGivingWay = signalHelpers.getNextLightsOrStations(intersectionNodeIds_InEdgeIds_indexed, prioritySignalIds_indexed)
-                logger.print('edgeIdsGivingWay =') logger.debugPrint(edgeIdsGivingWay)
-
 
                 if logger.isExtendedLog() then
                     local executionTime = math.ceil((os.clock() - _startTick) * 1000)
-                    logger.print('Finding edges and nodes took ' .. executionTime .. 'ms')
+                    logger.print('doing all took ' .. executionTime .. 'ms')
                 end
             end,
             logger.xpErrorHandler
