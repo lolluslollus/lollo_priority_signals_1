@@ -7,35 +7,14 @@ local stateHelpers = require('lollo_priority_signals.stateHelpers')
 local transfUtils = require('lollo_priority_signals.transfUtils')
 local transfUtilsUG = require('transf')
 
---[[
-    LOLLO NOTE
-    useful apis:
-
-    stopCmd = api.cmd.make.setUserStopped(25667, true)
-    api.cmd.sendCommand(stopCmd)
-
-    api.engine.system.transportVehicleSystem.getVehicles({edgeId}, true)
-    api.engine.system.transportVehicleSystem.getVehicles({edgeId}, false)
-    -- this finds all vehicles anywhere between the two given edge ids:
-    api.engine.system.transportVehicleSystem.getVehicles({edge1Id, edge2Id}, true)
-
-]]
-local  _signalModelId_EraA, _signalModelId_EraC, _signalModelId_OneWay_EraA, _signalModelId_OneWay_EraC
-
-local prioritySignalIds_indexedBy_intersectionNodeId_inEdgeId = {}
-local nodeIdTowardsIntersection_indexedBy_prioritySignalId_edgeIdGivingWay -- the first is only for testing
-local stoppedVehicleIds = {}
-
+local  _signalModelId_EraA, _signalModelId_EraC
 local _texts = {
 
 }
 
-local _vehicleStates = {
-    atTerminal = 2, -- api.type.enum.TransportVehicleState.AT_TERMINAL, -- 2
-    enRoute = 1, -- api.type.enum.TransportVehicleState.EN_ROUTE, -- 1
-    goingToDepot = 3, -- api.type.enum.TransportVehicleState.GOING_TO_DEPOT, -- 3
-    inDepot = 0, -- api.type.enum.TransportVehicleState.IN_DEPOT, -- 0
-}
+local prioritySignalIds_indexedBy_intersectionNodeId_inEdgeId = {}
+local nodeIdTowardsIntersection_indexedBy_prioritySignalId_edgeIdGivingWay -- the first is only for testing
+local stoppedVehicleIds = {}
 
 local _actions = {
     replaceEdgeWithSameRemovingObject = function(objectIdToRemove)
@@ -179,16 +158,10 @@ return {
                         LOLLO NOTE one-way lights are read as two-way lights,
                         and they don't appear in the menu if they have no two-way counterparts, or if those counterparts have expired.
                     ]]
-                    -- local era_a_signalIds = signalHelpers.getAllEdgeObjectsAndEdgesWithModelId(_signalModelId_EraA)
-                    -- local era_c_signalIds = signalHelpers.getAllEdgeObjectsAndEdgesWithModelId(_signalModelId_EraC)
                     local era_a_signalIds = signalHelpers.getAllEdgeObjectsWithModelId(_signalModelId_EraA)
                     local era_c_signalIds = signalHelpers.getAllEdgeObjectsWithModelId(_signalModelId_EraC)
-                    -- local era_a_oneWay_signalIds = signalHelpers.getAllEdgeObjectsAndEdgesWithModelId(_signalModelId_OneWay_EraA)
-                    -- local era_c_oneWay_signalIds = signalHelpers.getAllEdgeObjectsAndEdgesWithModelId(_signalModelId_OneWay_EraC)
                     logger.print('era_a_signalIds =') logger.debugPrint(era_a_signalIds)
                     logger.print('era_c_signalIds =') logger.debugPrint(era_c_signalIds)
-                    -- logger.print('era_a_oneWay_signalIds =') logger.debugPrint(era_a_oneWay_signalIds)
-                    -- logger.print('era_c_oneWay_signalIds =') logger.debugPrint(era_c_oneWay_signalIds)
                     local allPrioritySignalIds = {
                         table.unpack(era_a_signalIds),
                         table.unpack(era_c_signalIds)
@@ -880,11 +853,7 @@ return {
         logger.print('workerEngine.load firing')
         _signalModelId_EraA = api.res.modelRep.find('railroad/lollo_priority_signals/signal_path_a.mdl')
         _signalModelId_EraC = api.res.modelRep.find('railroad/lollo_priority_signals/signal_path_c.mdl')
-        -- _signalModelId_OneWay_EraA = api.res.modelRep.find('railroad/lollo_priority_signals/signal_path_a_one_way.mdl')
-        -- _signalModelId_OneWay_EraC = api.res.modelRep.find('railroad/lollo_priority_signals/signal_path_c_one_way.mdl')
         logger.print('_signalModelId_EraA =') logger.debugPrint(_signalModelId_EraA)
         logger.print('_signalModelId_EraC =') logger.debugPrint(_signalModelId_EraC)
-        -- logger.print('_signalModelId_OneWay_EraA =') logger.debugPrint(_signalModelId_OneWay_EraA)
-        -- logger.print('_signalModelId_OneWay_EraC =') logger.debugPrint(_signalModelId_OneWay_EraC)
     end,
 }
