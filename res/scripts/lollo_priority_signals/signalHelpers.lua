@@ -329,6 +329,7 @@ funcs.getNextLightsOrStations = function(prioritySignalIds_indexedBy_intersectio
         logger.print('_getNext4 starting, edgeId = ' .. edgeId .. ', commonNodeId = ' .. commonNodeId)
         if prioritySignalIds_indexedBy_inEdgeId[edgeId] ~= nil and #prioritySignalIds_indexedBy_inEdgeId[edgeId] > 0 then -- this edge enters the intersection behind the priority light:
             -- if I am here, I have gone too far back
+            logger.print('this edge leads from the prioritz signal into the intersection')
             return { isGoAhead = false }
         end
         local baseEdge = api.engine.getComponent(edgeId, api.type.ComponentType.BASE_EDGE)
