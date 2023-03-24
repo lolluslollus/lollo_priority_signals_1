@@ -13,7 +13,7 @@ local _texts = {
 }
 
 local prioritySignalIds_indexedBy_intersectionNodeId_inEdgeId = {}
-local nodeIdTowardsIntersection_indexedBy_prioritySignalId_edgeIdGivingWay -- the first is only for testing
+local nodeEdgeIdTowardsIntersection_indexedBy_prioritySignalId_edgeIdGivingWay -- the first is only for testing
 local stoppedVehicleIds = {}
 
 local _actions = {
@@ -448,8 +448,8 @@ return {
                     logger.print('prioritySignalIds_indexedBy_intersectionNodeId_inEdgeId =') logger.debugPrint(prioritySignalIds_indexedBy_intersectionNodeId_inEdgeId)
                     logger.print('edgeIdsWithPrioritySignals_indexedBy_signalId =') logger.debugPrint(edgeIdsWithPrioritySignals_indexedBy_signalId)
 
-                    nodeIdTowardsIntersection_indexedBy_prioritySignalId_edgeIdGivingWay = signalHelpers.getNextLightsOrStations(prioritySignalIds_indexedBy_intersectionNodeId_inEdgeId, edgeIdsWithPrioritySignals_indexedBy_signalId)
-                    logger.print('nodeIdTowardsIntersection_indexedBy_prioritySignalId_edgeIdGivingWay =') logger.debugPrint(nodeIdTowardsIntersection_indexedBy_prioritySignalId_edgeIdGivingWay)
+                    nodeEdgeIdTowardsIntersection_indexedBy_prioritySignalId_edgeIdGivingWay = signalHelpers.getNextLightsOrStations(prioritySignalIds_indexedBy_intersectionNodeId_inEdgeId, edgeIdsWithPrioritySignals_indexedBy_signalId)
+                    logger.print('nodeEdgeIdTowardsIntersection_indexedBy_prioritySignalId_edgeIdGivingWay =') logger.debugPrint(nodeEdgeIdTowardsIntersection_indexedBy_prioritySignalId_edgeIdGivingWay)
 
                     if logger.isExtendedLog() then
                         local executionTime = math.ceil((os.clock() - _startTick) * 1000)
@@ -463,8 +463,8 @@ return {
                         logger.print('prioritySignalIds =') logger.debugPrint(prioritySignalIds)
                         for _, prioritySignalId in pairs(prioritySignalIds) do
                             logger.print('prioritySignalId =') logger.debugPrint(prioritySignalId)
-                            logger.print('nodeIdTowardsIntersection_indexedBy_prioritySignalId_edgeIdGivingWay[prioritySignalId] =') logger.debugPrint(nodeIdTowardsIntersection_indexedBy_prioritySignalId_edgeIdGivingWay[prioritySignalId])
-                            if nodeIdTowardsIntersection_indexedBy_prioritySignalId_edgeIdGivingWay[prioritySignalId] ~= nil then
+                            logger.print('nodeEdgeIdTowardsIntersection_indexedBy_prioritySignalId_edgeIdGivingWay[prioritySignalId] =') logger.debugPrint(nodeEdgeIdTowardsIntersection_indexedBy_prioritySignalId_edgeIdGivingWay[prioritySignalId])
+                            if nodeEdgeIdTowardsIntersection_indexedBy_prioritySignalId_edgeIdGivingWay[prioritySignalId] ~= nil then
                                 local prioritySignalEdgeId = _edgeObject2EdgeMap[prioritySignalId]
                                 local edgeIds = prioritySignalEdgeId == inEdgeId and {inEdgeId} or {prioritySignalEdgeId, inEdgeId}
                                 logger.print('edgeIds for detecting priority trains =') logger.debugPrint(edgeIds)
@@ -472,7 +472,7 @@ return {
                                 logger.print('vehicleIdsNearPrioritySignals =') logger.debugPrint(vehicleIdsNearPrioritySignals)
                                 logger.print('#vehicleIdsNearPrioritySignals = ' .. #vehicleIdsNearPrioritySignals)
                                 if #vehicleIdsNearPrioritySignals > 0 then
-                                    for edgeIdGivingWay, nodeIdTowardsIntersection in pairs(nodeIdTowardsIntersection_indexedBy_prioritySignalId_edgeIdGivingWay[prioritySignalId]) do
+                                    for edgeIdGivingWay, nodeEdgeIdTowardsIntersection in pairs(nodeEdgeIdTowardsIntersection_indexedBy_prioritySignalId_edgeIdGivingWay[prioritySignalId]) do
                                         local vehicleIdsNearGiveWaySignals = api.engine.system.transportVehicleSystem.getVehicles({edgeIdGivingWay}, false)
                                         logger.print('vehicleIdsNearGiveWaySignals =') logger.debugPrint(vehicleIdsNearGiveWaySignals)
                                         for _, vehicleId in pairs(vehicleIdsNearGiveWaySignals) do
@@ -783,26 +783,27 @@ return {
 ]]
                                             local movePath = api.engine.getComponent(vehicleId, api.type.ComponentType.MOVE_PATH)
                                             local pathEdgeCount = #movePath.path.edges
-                                            local baseEdge = api.engine.getComponent(edgeIdGivingWay, api.type.ComponentType.BASE_EDGE)
+                                            -- local baseEdge = api.engine.getComponent(edgeIdGivingWay, api.type.ComponentType.BASE_EDGE)
                                             for p = movePath.dyn.pathPos.edgeIndex + 1, pathEdgeCount, 1 do
                                                 local currentMovePathBit = movePath.path.edges[p]
-                                                -- local baseEdge = api.engine.getComponent(currentMovePathBit.edgeId.entity, api.type.ComponentType.BASE_EDGE)
-                                                local nextNodeId = currentMovePathBit.dir and baseEdge.node1 or baseEdge.node0
-                                                local prevNodeId = currentMovePathBit.dir and baseEdge.node0 or baseEdge.node1
-                                                if prevNodeId == nodeIdTowardsIntersection then
-                                                    logger.print('vehicle ' .. vehicleId ' not stopped coz is going away from the intersection')
-                                                    break
-                                                elseif nextNodeId == nodeIdTowardsIntersection then
-                                                    if not(api.engine.getComponent(vehicleId, api.type.ComponentType.TRANSPORT_VEHICLE).userStopped) then
-                                                        -- api.cmd.sendCommand(api.cmd.make.reverseVehicle(vehicleId)) -- this is to stop it at once
-                                                        api.cmd.sendCommand(api.cmd.make.setUserStopped(vehicleId, true))
-                                                        -- api.cmd.sendCommand(api.cmd.make.reverseVehicle(vehicleId)) -- this is to stop it at once
-                                                        logger.print('vehicle ' .. vehicleId ' stopped')
+                                                -- local nextNodeId = currentMovePathBit.dir and baseEdge.node1 or baseEdge.node0
+                                                -- local prevNodeId = currentMovePathBit.dir and baseEdge.node0 or baseEdge.node1
+                                                if currentMovePathBit.edgeId.entity == edgeIdGivingWay then
+                                                    if currentMovePathBit.dir == nodeEdgeIdTowardsIntersection.isGiveWayEdgeDirTowardsIntersection then
+                                                        if not(api.engine.getComponent(vehicleId, api.type.ComponentType.TRANSPORT_VEHICLE).userStopped) then
+                                                            -- api.cmd.sendCommand(api.cmd.make.reverseVehicle(vehicleId)) -- this is to stop it at once
+                                                            api.cmd.sendCommand(api.cmd.make.setUserStopped(vehicleId, true))
+                                                            -- api.cmd.sendCommand(api.cmd.make.reverseVehicle(vehicleId)) -- this is to stop it at once
+                                                            logger.print('vehicle ' .. vehicleId ' stopped')
+                                                        else
+                                                            logger.print('vehicle ' .. vehicleId ' already stopped')
+                                                        end
+                                                        stoppedVehicleIds[vehicleId] = _gameTime_msec
+                                                        break
                                                     else
-                                                        logger.print('vehicle ' .. vehicleId ' already stopped')
+                                                        logger.print('vehicle ' .. vehicleId ' not stopped coz is going away from the intersection')
+                                                        break
                                                     end
-                                                    stoppedVehicleIds[vehicleId] = _gameTime_msec
-                                                    break
                                                 end
                                             end
                                         end
