@@ -74,6 +74,8 @@ return {
                     end
                 end
             end
+        -- else
+        --     logger.print('guiHandleEvent caught id = ' .. tostring(id) .. ', name =' .. tostring(name))
         end
     end,
 }
