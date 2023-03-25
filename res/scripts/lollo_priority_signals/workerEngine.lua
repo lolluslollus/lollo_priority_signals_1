@@ -475,6 +475,9 @@ return {
     }
 ]]
 
+                ---comment
+                ---@return boolean
+                ---@return table<integer, any>
                 local _getVehicleIdsNearPrioritySignals = function()
                     local results_indexed = {}
                     local hasRecords = false
@@ -501,28 +504,69 @@ return {
                     return hasRecords, results_indexed
                 end
 
+                local _isTrainBoundForEdgeId = function(vehicleId, edgeId)
+                    local movePath = api.engine.getComponent(vehicleId, api.type.ComponentType.MOVE_PATH)
+                    local pathEdgeCount = #movePath.path.edges
+                    -- local baseEdge = api.engine.getComponent(edgeIdGivingWay, api.type.ComponentType.BASE_EDGE)
+                    for p = movePath.dyn.pathPos.edgeIndex + 1, pathEdgeCount, 1 do
+                        local currentMovePathBit = movePath.path.edges[p]
+                        -- local nextNodeId = currentMovePathBit.dir and baseEdge.node1 or baseEdge.node0
+                        -- local prevNodeId = currentMovePathBit.dir and baseEdge.node0 or baseEdge.node1
+                        if currentMovePathBit.edgeId.entity == edgeId then
+                            return true
+                        end
+                    end
+                    return false
+                end
+
+                local _isAnyTrainBoundForEdgeId1 = function(vehicleIds_indexed, edgeId)
+                    for vehicleId, _ in pairs(vehicleIds_indexed) do
+                        if _isTrainBoundForEdgeId(vehicleId, edgeId) then
+                            logger.print('_isAnyTrainBoundForEdgeId1 about to return true')
+                            return true
+                        end
+                    end
+                    logger.print('_isAnyTrainBoundForEdgeId1 about to return false')
+                    return false
+                end
+
+                local _isAnyTrainBoundForEdgeId2 = function(vehicleIds_indexed, edgeId)
+                    local vehicleIdsBoundForEdgeId = api.engine.system.transportVehicleSystem.getVehicles({edgeId}, true)
+                    for _, boundVehicleId in pairs(vehicleIdsBoundForEdgeId) do
+                        if vehicleIds_indexed[boundVehicleId] then
+                            logger.print('_isAnyTrainBoundForEdgeId2 about to return true')
+                            return true
+                        end
+                    end
+                    logger.print('_isAnyTrainBoundForEdgeId2 about to return false')
+                    return false
+                end
+                -- LOLLO TODO compare the two functions and choose one
+                local _isAnyTrainBoundForEdgeId = _isAnyTrainBoundForEdgeId2
+
                 for intersectionNodeId, nodeEdgeIdBeforeIntersection_indexedBy_inEdgeId in pairs(nodeEdgeIdBeforeIntersection_indexedBy_intersectionNodeId_edgeIdHavingWay) do
                     logger.print('intersectionNodeId = ' .. intersectionNodeId .. '; nodeEdgeIdBeforeIntersection_indexedBy_inEdgeId =')
                     logger.debugPrint(nodeEdgeIdBeforeIntersection_indexedBy_inEdgeId)
-                    for inEdgeId, nodeEdgeIdBeforeIntersection in pairs(nodeEdgeIdBeforeIntersection_indexedBy_inEdgeId) do
+                    for inPriorityEdgeId, nodeEdgeIdBeforeIntersection in pairs(nodeEdgeIdBeforeIntersection_indexedBy_inEdgeId) do
                         logger.print('nodeEdgeIdBeforeIntersection =') logger.debugPrint(nodeEdgeIdBeforeIntersection)
                         logger.print('nodeEdgeIdBehindIntersection_indexedBy_intersectionNodeId_edgeIdGivingWay[intersectionNodeId] =')
                         logger.debugPrint(nodeEdgeIdBehindIntersection_indexedBy_intersectionNodeId_edgeIdGivingWay[intersectionNodeId])
                         if nodeEdgeIdBehindIntersection_indexedBy_intersectionNodeId_edgeIdGivingWay[intersectionNodeId] ~= nil then
-                            local edgeIds = nodeEdgeIdBeforeIntersection.signalEdgeId == inEdgeId
-                                and {inEdgeId}
-                                or {nodeEdgeIdBeforeIntersection.signalEdgeId, inEdgeId}
+                            local edgeIds = nodeEdgeIdBeforeIntersection.signalEdgeId == inPriorityEdgeId
+                                and {inPriorityEdgeId}
+                                or {nodeEdgeIdBeforeIntersection.signalEdgeId, inPriorityEdgeId}
                             logger.print('edgeIds for detecting priority trains =') logger.debugPrint(edgeIds)
                             local hasVehicleIdsNearPrioritySignals, vehicleIdsNearPrioritySignals = _getVehicleIdsNearPrioritySignals()
                             -- logger.print('vehicleIdsNearPrioritySignals =') logger.debugPrint(vehicleIdsNearPrioritySignals)
                             -- logger.print('#vehicleIdsNearPrioritySignals = ' .. #vehicleIdsNearPrioritySignals)
                             if hasVehicleIdsNearPrioritySignals then
                                 for edgeIdGivingWay, nodeEdgeIdBehindIntersection in pairs(nodeEdgeIdBehindIntersection_indexedBy_intersectionNodeId_edgeIdGivingWay[intersectionNodeId]) do
-                                    -- in the following, false means "only occupied now", true means "occupied nor or soon"
-                                    -- "soon" means "since a vehicle left the last station and before it reaches the next"
-                                    local vehicleIdsNearGiveWaySignals = api.engine.system.transportVehicleSystem.getVehicles({edgeIdGivingWay}, false)
-                                    logger.print('vehicleIdsNearGiveWaySignals =') logger.debugPrint(vehicleIdsNearGiveWaySignals)
-                                    for _, vehicleId in pairs(vehicleIdsNearGiveWaySignals) do
+                                    if not(_isAnyTrainBoundForEdgeId(vehicleIdsNearPrioritySignals, edgeIdGivingWay)) then -- avoid gridlocks
+                                        -- in the following, false means "only occupied now", true means "occupied nor or soon"
+                                        -- "soon" means "since a vehicle left the last station and before it reaches the next"
+                                        local vehicleIdsNearGiveWaySignals = api.engine.system.transportVehicleSystem.getVehicles({edgeIdGivingWay}, false)
+                                        logger.print('vehicleIdsNearGiveWaySignals =') logger.debugPrint(vehicleIdsNearGiveWaySignals)
+                                        for _, vehicleId in pairs(vehicleIdsNearGiveWaySignals) do
 --[[
                                         -- LOLLO TODO only stop those vehicles that are heading for the intersection
                                         mp = api.engine.getComponent(veId, api.type.ComponentType.MOVE_PATH)
@@ -828,34 +872,30 @@ return {
                                             },
                                         }
 ]]
-
---[[
-    LOLLO TODO take all trains approaching a priority signal
-    for each, check if they are going to occupy an edge that gives way
-    if none found, stop the train in that edge
-]]
-                                        local movePath = api.engine.getComponent(vehicleId, api.type.ComponentType.MOVE_PATH)
-                                        local pathEdgeCount = #movePath.path.edges
-                                        -- local baseEdge = api.engine.getComponent(edgeIdGivingWay, api.type.ComponentType.BASE_EDGE)
-                                        for p = movePath.dyn.pathPos.edgeIndex + 1, pathEdgeCount, 1 do
-                                            local currentMovePathBit = movePath.path.edges[p]
-                                            -- local nextNodeId = currentMovePathBit.dir and baseEdge.node1 or baseEdge.node0
-                                            -- local prevNodeId = currentMovePathBit.dir and baseEdge.node0 or baseEdge.node1
-                                            if currentMovePathBit.edgeId.entity == edgeIdGivingWay then
-                                                if currentMovePathBit.dir == nodeEdgeIdBehindIntersection.isGiveWayEdgeDirTowardsIntersection then
-                                                    if not(api.engine.getComponent(vehicleId, api.type.ComponentType.TRANSPORT_VEHICLE).userStopped) then
-                                                        -- api.cmd.sendCommand(api.cmd.make.reverseVehicle(vehicleId)) -- this is to stop it at once
-                                                        api.cmd.sendCommand(api.cmd.make.setUserStopped(vehicleId, true))
-                                                        -- api.cmd.sendCommand(api.cmd.make.reverseVehicle(vehicleId)) -- this is to stop it at once
-                                                        logger.print('vehicle ' .. vehicleId ' stopped')
+                                            local movePath = api.engine.getComponent(vehicleId, api.type.ComponentType.MOVE_PATH)
+                                            local pathEdgeCount = #movePath.path.edges
+                                            -- local baseEdge = api.engine.getComponent(edgeIdGivingWay, api.type.ComponentType.BASE_EDGE)
+                                            for p = movePath.dyn.pathPos.edgeIndex + 1, pathEdgeCount, 1 do
+                                                local currentMovePathBit = movePath.path.edges[p]
+                                                -- local nextNodeId = currentMovePathBit.dir and baseEdge.node1 or baseEdge.node0
+                                                -- local prevNodeId = currentMovePathBit.dir and baseEdge.node0 or baseEdge.node1
+                                                -- stop trains heading for the intersection
+                                                if currentMovePathBit.edgeId.entity == edgeIdGivingWay then
+                                                    if currentMovePathBit.dir == nodeEdgeIdBehindIntersection.isGiveWayEdgeDirTowardsIntersection then
+                                                        if not(api.engine.getComponent(vehicleId, api.type.ComponentType.TRANSPORT_VEHICLE).userStopped) then
+                                                            -- api.cmd.sendCommand(api.cmd.make.reverseVehicle(vehicleId)) -- this is to stop it at once
+                                                            api.cmd.sendCommand(api.cmd.make.setUserStopped(vehicleId, true))
+                                                            -- api.cmd.sendCommand(api.cmd.make.reverseVehicle(vehicleId)) -- this is to stop it at once
+                                                            logger.print('vehicle ' .. vehicleId .. ' stopped')
+                                                        else
+                                                            logger.print('vehicle ' .. vehicleId .. ' already stopped')
+                                                        end
+                                                        stoppedVehicleIds[vehicleId] = _gameTime_msec
+                                                        break
                                                     else
-                                                        logger.print('vehicle ' .. vehicleId ' already stopped')
+                                                        logger.print('vehicle ' .. vehicleId .. ' not stopped coz is going away from the intersection')
+                                                        break
                                                     end
-                                                    stoppedVehicleIds[vehicleId] = _gameTime_msec
-                                                    break
-                                                else
-                                                    logger.print('vehicle ' .. vehicleId ' not stopped coz is going away from the intersection')
-                                                    break
                                                 end
                                             end
                                         end
@@ -866,10 +906,12 @@ return {
                     end
                 end
                 -- restart vehicles that don't need to wait anymore
+                -- LOLLO TODO this thing restarts trains the user has manually stopped: this is no good
+                logger.print('_gameTime_msec = ' .. tostring(_gameTime_msec) .. '; stoppedVehicleIds =') logger.debugPrint(stoppedVehicleIds)
                 for vehicleId, gameTimeMsec in pairs(stoppedVehicleIds) do
                     if gameTimeMsec ~= _gameTime_msec then
                         api.cmd.sendCommand(api.cmd.make.setUserStopped(vehicleId, false))
-                        logger.print('vehicle ' .. vehicleId ' restarted')
+                        logger.print('vehicle ' .. vehicleId .. ' restarted')
                     end
                 end
 

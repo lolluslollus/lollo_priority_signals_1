@@ -359,6 +359,7 @@ funcs.getNextLightsOrStations = function(nodeEdgeIdBeforeIntersection_indexedBy_
                 if prioritySignals_indexed[lightId] ~= nil then return { isGoAhead = false } end
             end
             -- check if the intersection is reachable from both ends of the edge, there could be a light blocking it or a cross instead of a switch
+            -- You might check this before checking the lights, and leave if isPath is false LOLLO TODO check if it is faster that way
             if funcs.getIsPathFromEdgeToNode(edgeId, intersectionNodeId, constants.maxDistanceFromIntersection) then
                 -- _addEdgeGivingWay(edgeId, baseEdge, commonNodeId, prioritySignalIds_indexedBy_inEdgeId)
                 _addEdgeGivingWay2(edgeId, baseEdge, commonNodeId, intersectionNodeId)
