@@ -19,7 +19,7 @@ function data()
                             materials = { "railroad/signal_path.mtl", },
                             mesh = "railroad/signal_path_a/signal_path_a_lod0.msh",
                             name = "signal_path_a",
-                            transf = { -1, 1.2246468525852e-16, 1.2246468525852e-16, 0, -1.2246468525852e-16, -1, -1.2246468525852e-16, 0, 1.2246468525852e-16, -1.2246468525852e-16, 1, 0, -1.8607282295593e-16, -2, -1.8607282295593e-16, 1, },
+                            transf = { -1, 0, 0, 0, -0, -1, -0, 0, 0, -0, 1, 0, 0, -2, 0, 1, },
                         },
                         {
                             animations = {
@@ -39,13 +39,13 @@ function data()
                             materials = { "railroad/signal_path.mtl", },
                             mesh = "railroad/signal_path_a/signal_path_a_signal_lod0.msh",
                             name = "signal_path_a_signal",
-                            transf = { -1, 1.2246468525852e-16, 1.2246468525852e-16, 0, -1.2246468525852e-16, -1, -1.2246468525852e-16, 0, 1.2246468525852e-16, -1.2246468525852e-16, 1, 0, 3.6642899408105e-16, -2, 4.511519908905, 1, },
+                            transf = { -1, 0, 0, 0, -0, -1, -0, 0, 0, -0, 1, 0, 0, -2, 4.511519908905, 1, },
                         },
                         {
                             materials = { "railroad/signal_path.mtl", },
                             mesh = "railroad/signal_path_a/signal_path_a_oneway_lod0.msh",
                             name = "signal_path_a_oneway",
-                            transf = { -1, 1.2246468525852e-16, 1.2246468525852e-16, 0, -1.2246468525852e-16, -1, -1.2246468525852e-16, 0, 1.2246468525852e-16, -1.2246468525852e-16, 1, 0, -1.8607282295593e-16, -2, -1.8607282295593e-16, 1, },
+                            transf = { -1, 0, 0, 0, -0, -1, -0, 0, 0, -0, 1, 0, 0, -2, 0, 1, },
                         },
                         {
                             materials = { "lollo_priority_signals/icon/white.mtl", },
@@ -53,13 +53,39 @@ function data()
                             name = "priority_marker",
                             transf = { 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, -1, 0, 1, },
                         },
+                        {
+                            materials = { "railroad/signal_path.mtl", },
+                            mesh = "railroad/signal_path_a/signal_path_a_lod0.msh",
+                            name = "signal_path_a",
+                            transf = { -1, 0, 0, 0, -0, -1, -0, 0, 0, -0, 1, 0, 0, -2, 2, 1, },
+                        },
+                        {
+                            animations = {
+                                green = {
+                                    params = {
+                                        id = "railroad/signal_path_a_one_way/green/signal_path_a_signal.ani",
+                                    },
+                                    type = "FILE_REF",
+                                },
+                                red = {
+                                    params = {
+                                        id = "railroad/signal_path_a_one_way/red/signal_path_a_signal.ani",
+                                    },
+                                    type = "FILE_REF",
+                                },
+                            },
+                            materials = { "railroad/signal_path.mtl", },
+                            mesh = "railroad/signal_path_a/signal_path_a_signal_lod0.msh",
+                            name = "signal_path_a_signal",
+                            transf = { -1, 0, 0, 0, -0, -1, -0, 0, 0, -0, 1, 0, 0, -2, 6.516, 1, },
+                        },
                     },
-                    name = "RootNode",
-                    transf = { 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, },
+                    -- name = "RootNode",
+                    -- transf = { 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, },
                 },
                 static = false,
                 visibleFrom = 0,
-                visibleTo = 506.71264648438,
+                visibleTo = 500,
             },
         },
         metadata = {
