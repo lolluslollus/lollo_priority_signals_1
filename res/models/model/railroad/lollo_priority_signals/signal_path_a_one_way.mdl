@@ -47,12 +47,12 @@ function data()
                             name = "signal_path_a_oneway",
                             transf = { -1, 0, 0, 0, -0, -1, -0, 0, 0, -0, 1, 0, 0, -2, 0, 1, },
                         },
-                        {
-                            materials = { "lollo_priority_signals/icon/white.mtl", },
-                            mesh = "lollo_priority_signals/icon/lod_0_icon_pointer.msh",
-                            name = "priority_marker",
-                            transf = { 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, -1, 0, 1, },
-                        },
+                        -- {
+                        --     materials = { "lollo_priority_signals/icon/white.mtl", },
+                        --     mesh = "lollo_priority_signals/icon/lod_0_icon_pointer.msh",
+                        --     name = "priority_marker",
+                        --     transf = { 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, -1, 0, 1, },
+                        -- },
                         {
                             materials = { "railroad/signal_path.mtl", },
                             mesh = "railroad/signal_path_a/signal_path_a_lod0.msh",
