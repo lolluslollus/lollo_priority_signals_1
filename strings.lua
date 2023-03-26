@@ -5,7 +5,8 @@ function data()
                 [[
 [b]Priority signals for tracks.[/b]
 Place these before an intersection and ordinary signals (or a station) behind. Trains entering the intersection via priority signals will have priority over those entering via ordinary signals (or the station). Place the priority signal farther apart from the intersection to reserve a longer stretch of track for priority computations. Place the ordinary signals far enough from the intersection, so trains have room to stop.
-Tracks are made of subsequent segments, you can check them with debug mode and <AltGr + L>. If a signal is too many segments apart from an intersection, the priority computation will ignore it.
+Every signal has a white arrow that appears when you open the signal menu. Two-way priority signals only prioritise trains running along the white arrow - not those running against it.
+Tracks are made of subsequent segments, you can check them with debug mode and <AltGr + L>. If a signal is too many segments apart from an intersection, never mind how short they are, the priority computation will ignore it.
 Switch priority computations on and off with the icon in the bottom bar.
 			]],
             ["ModName"] = "Priority signals for tracks",
