@@ -142,41 +142,24 @@ local _utils = {
         end
         return hasRecords, results_indexed
     end,
-    -- _isTrainBoundForEdgeOrNodeId = function(vehicleId, edgeId)
-    --     local movePath = api.engine.getComponent(vehicleId, api.type.ComponentType.MOVE_PATH)
-    --     -- local baseEdge = api.engine.getComponent(edgeIdGivingWay, api.type.ComponentType.BASE_EDGE)
-    --     for p = movePath.dyn.pathPos.edgeIndex + 1, #movePath.path.edges, 1 do
-    --         local currentMovePathBit = movePath.path.edges[p]
-    --         -- local nextNodeId = currentMovePathBit.dir and baseEdge.node1 or baseEdge.node0
-    --         -- local prevNodeId = currentMovePathBit.dir and baseEdge.node0 or baseEdge.node1
-    --         if currentMovePathBit.edgeId.entity == edgeId then
-    --             return true
-    --         end
-    --     end
-    --     return false
-    -- end,
-    -- _isAnyTrainBoundForEdgeOrNode1 = function(vehicleIds_indexed, edgeId)
-    --     for vehicleId, _ in pairs(vehicleIds_indexed) do
-    --         if _isTrainBoundForEdgeOrNodeId(vehicleId, edgeId) then
-    --             logger.print('_isAnyTrainBoundForEdgeOrNode1 about to return true')
-    --             return true
-    --         end
-    --     end
-    --     logger.print('_isAnyTrainBoundForEdgeOrNode1 about to return false')
-    --     return false
-    -- end,
-    _isAnyTrainBoundForEdgeOrNode2 = function(vehicleIds_indexed, edgeOrNodeId)
+    _isAnyTrainBoundForEdgeOrNode = function(vehicleIds_indexed, edgeOrNodeId)
         -- in the following, false means "only occupied now", true means "occupied nor or soon"
         -- "soon" means "since a vehicle left the last station and before it reaches the next"
         -- It works with edges and with intersection nodes.
-        local vehicleIdsBoundForEdgeId = api.engine.system.transportVehicleSystem.getVehicles({edgeOrNodeId}, true)
-        for _, boundVehicleId in pairs(vehicleIdsBoundForEdgeId) do
-            if vehicleIds_indexed[boundVehicleId] then
-                logger.print('_isAnyTrainBoundForEdgeOrNode2 about to return true')
-                return true
+        local vehicleIdsBoundForEdgeOrNode = api.engine.system.transportVehicleSystem.getVehicles({edgeOrNodeId}, true)
+        for _, vehicleId in pairs(vehicleIdsBoundForEdgeOrNode) do
+            if vehicleIds_indexed[vehicleId] then
+                local movePath = api.engine.getComponent(vehicleId, api.type.ComponentType.MOVE_PATH)
+                for p = movePath.dyn.pathPos.edgeIndex + 1, #movePath.path.edges, 1 do
+                    local currentMovePathBit = movePath.path.edges[p]
+                    if currentMovePathBit.edgeId.entity == edgeOrNodeId then
+                        logger.print('_isAnyTrainBoundForEdgeOrNode about to return true')
+                        return true
+                    end
+                end
             end
         end
-        logger.print('_isAnyTrainBoundForEdgeOrNode2 about to return false')
+        logger.print('_isAnyTrainBoundForEdgeOrNode about to return false')
         return false
     end,
 }
@@ -257,9 +240,6 @@ return {
                     end
                 end -- update graph
 
-                -- LOLLO TODO compare the two functions and choose one
-                local _isAnyTrainBoundForEdgeOrNode = _utils._isAnyTrainBoundForEdgeOrNode2
-
                 for intersectionNodeId, nodeEdgeBeforeIntersection_indexedBy_inEdgeId in pairs(nodeEdgeBeforeIntersection_indexedBy_intersectionNodeId_inEdgeId) do
                     logger.print('intersectionNodeId = ' .. intersectionNodeId .. '; nodeEdgeBeforeIntersection_indexedBy_inEdgeId =') logger.debugPrint(nodeEdgeBeforeIntersection_indexedBy_inEdgeId)
                     -- this assumes one-way priority signals
@@ -270,9 +250,9 @@ return {
                     if hasPriorityVehicles then
                         for edgeIdGivingWay, nodeEdgeBehindIntersection in pairs(nodeEdgeBehindIntersection_indexedBy_intersectionNodeId_inEdgeId[intersectionNodeId]) do
                             -- avoid gridlocks: do not stop a vehicle that must give way if it is on the path of a priority vehicle
-                            if not(_isAnyTrainBoundForEdgeOrNode(priorityVehicleIds, edgeIdGivingWay))
+                            if not(_utils._isAnyTrainBoundForEdgeOrNode(priorityVehicleIds, edgeIdGivingWay))
                             -- LOLLO TODO if I have a cross, I should check the nodes, the edges won't do. Check if the following works.
-                            and not(_isAnyTrainBoundForEdgeOrNode(priorityVehicleIds, nodeEdgeBehindIntersection.nodeIdTowardsIntersection))
+                            and not(_utils._isAnyTrainBoundForEdgeOrNode(priorityVehicleIds, nodeEdgeBehindIntersection.nodeIdTowardsIntersection))
                             then
                                 logger.print('no trains are bound for edge ' .. edgeIdGivingWay .. ' or node ' .. nodeEdgeBehindIntersection.nodeIdTowardsIntersection)
                                 -- in the following, false means "only occupied now", true means "occupied nor or soon"
