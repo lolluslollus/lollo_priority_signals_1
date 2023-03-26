@@ -49,11 +49,45 @@ function data()
                             name = "signal_path_c_light_red",
                             transf = { -1, 1.2246468525852e-16, 1.2246468525852e-16, 0, -1.2246468525852e-16, -1, -1.2246468525852e-16, 0, 1.2246468525852e-16, -1.2246468525852e-16, 1, 0, -1.8607282295593e-16, -2, -1.8607282295593e-16, 1, },
                         },
+                        -- {
+                        --     materials = { "lollo_priority_signals/icon/white.mtl", },
+                        --     mesh = "lollo_priority_signals/icon/lod_0_icon_pointer.msh",
+                        --     name = "priority_marker",
+                        --     transf = { 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, -1, 0, 1, },
+                        -- },
                         {
-                            materials = { "lollo_priority_signals/icon/white.mtl", },
-                            mesh = "lollo_priority_signals/icon/lod_0_icon_pointer.msh",
-                            name = "priority_marker",
-                            transf = { 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, -1, 0, 1, },
+                            materials = { "railroad/signal_path.mtl", },
+                            mesh = "lollo_priority_signals/railroad/signal_path_c_lod0.msh",
+                            name = "signal_path_c",
+                            transf = { -1, 0, 0, 0, 0, -1, 0, 0, 0, 0, 1, 0, 0.0, -2, 0.8, 1, },
+                        },
+                        {
+                            animations = {
+                                red = {
+                                    params = {
+                                        id = "railroad/signal_path_c_one_way/red/signal_path_c_light_green.ani",
+                                    },
+                                    type = "FILE_REF",
+                                },
+                            },
+                            materials = { "railroad/emissive/railroad_lights_all.mtl", },
+                            mesh = "railroad/signal_path_c/signal_path_c_light_green_lod0.msh",
+                            name = "signal_path_c_light_green",
+                            transf = { -1, 0, 0, 0, 0, -1, 0, 0, 0, 0, 1, 0, 0.0, -2, 0.8, 1, },
+                        },
+                        {
+                            animations = {
+                                green = {
+                                    params = {
+                                        id = "railroad/signal_path_c_one_way/green/signal_path_c_light_red.ani",
+                                    },
+                                    type = "FILE_REF",
+                                },
+                            },
+                            materials = { "railroad/emissive/railroad_lights_all.mtl", },
+                            mesh = "railroad/signal_path_c/signal_path_c_light_red_lod0.msh",
+                            name = "signal_path_c_light_red",
+                            transf = { -1, 0, 0, 0, 0, -1, 0, 0, 0, 0, 1, 0, 0.0, -2, 0.8, 1, },
                         },
                     },
                     name = "RootNode",
@@ -61,7 +95,7 @@ function data()
                 },
                 static = false,
                 visibleFrom = 0,
-                visibleTo = 439.02310180664,
+                visibleTo = 500,
             },
         },
         metadata = {

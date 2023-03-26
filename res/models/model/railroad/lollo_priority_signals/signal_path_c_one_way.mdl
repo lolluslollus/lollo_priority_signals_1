@@ -65,7 +65,7 @@ function data()
                             materials = { "railroad/signal_path.mtl", },
                             mesh = "lollo_priority_signals/railroad/signal_path_c_lod0.msh",
                             name = "signal_path_c",
-                            transf = { -1, 0, 0, 0, 0, -1, 0, 0, 0, 0, 1, 0, 0.0, -2, 1.52, 1, },
+                            transf = { -1, 0, 0, 0, 0, -1, 0, 0, 0, 0, 1, 0, 0.0, -2, 0.8, 1, },
                         },
                         {
                             animations = {
@@ -79,7 +79,7 @@ function data()
                             materials = { "railroad/emissive/railroad_lights_all.mtl", },
                             mesh = "railroad/signal_path_c/signal_path_c_light_green_lod0.msh",
                             name = "signal_path_c_light_green",
-                            transf = { -1, 0, 0, 0, 0, -1, 0, 0, 0, 0, 1, 0, 0.0, -2, 1.52, 1, },
+                            transf = { -1, 0, 0, 0, 0, -1, 0, 0, 0, 0, 1, 0, 0.0, -2, 0.8, 1, },
                         },
                         {
                             animations = {
@@ -93,7 +93,7 @@ function data()
                             materials = { "railroad/emissive/railroad_lights_all.mtl", },
                             mesh = "railroad/signal_path_c/signal_path_c_light_red_lod0.msh",
                             name = "signal_path_c_light_red",
-                            transf = { -1, 0, 0, 0, 0, -1, 0, 0, 0, 0, 1, 0, 0.0, -2, 1.52, 1, },
+                            transf = { -1, 0, 0, 0, 0, -1, 0, 0, 0, 0, 1, 0, 0.0, -2, 0.8, 1, },
                         },
                     },
                     name = "RootNode",
@@ -101,7 +101,7 @@ function data()
                 },
                 static = false,
                 visibleFrom = 0,
-                visibleTo = 439.02310180664,
+                visibleTo = 500,
             },
         },
         metadata = {
