@@ -377,7 +377,7 @@ funcs.getNextLightsOrStations = function(nodeEdgeBeforeIntersection_indexedBy_in
         logger.print('_getNext3 starting, edgeId = ' .. edgeId .. ', commonNodeId = ' .. commonNodeId)
         local next = _getNext4(edgeId, commonNodeId, intersectionNodeId, count, prioritySignalIds_indexedBy_inEdgeId)
         if next.isGoAhead then
-            if count < constants.maxNSegmentsAfterIntersection then
+            if count < constants.maxNSegmentsBehindIntersection then
                 local connectedEdgeIds = funcs.getConnectedEdgeIdsExceptOne(edgeId, next.newNodeId)
                 getNext2Func(connectedEdgeIds, next.newNodeId, intersectionNodeId, getNext2Func, count, prioritySignalIds_indexedBy_inEdgeId)
                 logger.print('count = ' .. count)

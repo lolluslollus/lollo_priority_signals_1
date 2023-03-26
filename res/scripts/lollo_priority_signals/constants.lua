@@ -1,7 +1,7 @@
 local constants = {
     refreshGraphPeriodMsec = 5000, -- refresh every 5 seconds
-    maxNSegmentsBeforeIntersection = 5, -- seek intersections max 5 segments ahead of signal
-    maxNSegmentsAfterIntersection = 8, -- seek intersections max 5 segments ahead of signal
+    maxNSegmentsBeforeIntersection = 8, -- seek intersections max N segments ahead of signal
+    maxNSegmentsBehindIntersection = 8, -- seek intersections max N segments ahead of signal
     maxDistanceFromIntersection = 500, -- seek edges max 500 m from intersection
 
     eventId = '__lollo_priority_signals__',
