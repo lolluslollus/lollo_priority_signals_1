@@ -1,0 +1,54 @@
+function data()
+return {
+	matConfigs = {
+		{ 0, }, 
+	},
+	subMeshes = {
+		{
+			indices = {
+				normal = {
+					count = 8232,
+					offset = 45832,
+				},
+				position = {
+					count = 8232,
+					offset = 21136,
+				},
+				tangent = {
+					count = 8232,
+					offset = 29368,
+				},
+				uv0 = {
+					count = 8232,
+					offset = 37600,
+				},
+			},
+			materials = {
+				"railroad/signal_path.mtl", 
+			},
+		}, 
+	},
+	vertexAttr = {
+		normal = {
+			count = 2988,
+			numComp = 3,
+			offset = 18148,
+		},
+		position = {
+			count = 4356,
+			numComp = 3,
+			offset = 0,
+		},
+		tangent = {
+			count = 9792,
+			numComp = 4,
+			offset = 4356,
+		},
+		uv0 = {
+			count = 4000,
+			numComp = 2,
+			offset = 14148,
+		},
+	},
+}
+end

@@ -55,9 +55,9 @@ function data()
                         -- },
                         {
                             materials = { "railroad/signal_path.mtl", },
-                            mesh = "railroad/signal_path_a/signal_path_a_lod0.msh",
+                            mesh = "lollo_priority_signals/railroad/signal_path_a_lod0.msh",
                             name = "signal_path_a",
-                            transf = { -1, 0, 0, 0, -0, -1, -0, 0, 0, -0, 1, 0, 0, -2, 2, 1, },
+                            transf = { -1, 0, 0, 0, -0, -1, -0, 0, 0, -0, 1, 0, 0, -2, 1.5, 1, },
                         },
                         {
                             animations = {
@@ -77,7 +77,7 @@ function data()
                             materials = { "railroad/signal_path.mtl", },
                             mesh = "railroad/signal_path_a/signal_path_a_signal_lod0.msh",
                             name = "signal_path_a_signal",
-                            transf = { -1, 0, 0, 0, -0, -1, -0, 0, 0, -0, 1, 0, 0, -2, 6.516, 1, },
+                            transf = { -1, 0, 0, 0, -0, -1, -0, 0, 0, -0, 1, 0, 0, -2, 6.016, 1, },
                         },
                     },
                     -- name = "RootNode",
