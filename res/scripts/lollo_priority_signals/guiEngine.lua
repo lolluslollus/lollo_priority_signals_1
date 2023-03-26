@@ -1,6 +1,4 @@
-local arrayUtils = require('lollo_priority_signals.arrayUtils')
 local constants = require('lollo_priority_signals.constants')
-local edgeUtils = require('lollo_priority_signals.edgeUtils')
 local guiHelpers = require('lollo_priority_signals.guiHelpers')
 local logger = require('lollo_priority_signals.logger')
 local signalHelpers = require ("lollo_priority_signals.signalHelpers")
