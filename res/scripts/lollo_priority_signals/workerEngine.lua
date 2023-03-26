@@ -797,6 +797,48 @@ return {
                     return hasRecords, results_indexed
                 end
 
+                ---@param nodeEdgeBeforeIntersection_indexedBy_inEdgeId table<integer, { isHaveWayEdgeDirTowardsIntersection: boolean, signalEdgeId: integer, signalId: integer }>
+                ---@return boolean
+                ---@return table<integer, boolean>
+                local _getVehicleIdsBoundForPrioritySignals = function(nodeEdgeBeforeIntersection_indexedBy_inEdgeId)
+                    logger.print('_getVehicleIdsBoundForPrioritySignals starting')
+                    local results_indexed = {}
+                    local hasRecords = false
+
+                    for inEdgeId, nodeEdgeBeforeIntersection in pairs(nodeEdgeBeforeIntersection_indexedBy_inEdgeId) do
+                        logger.print('inEdgeId = ' .. inEdgeId .. ', nodeEdgeBeforeIntersection =') logger.debugPrint(nodeEdgeBeforeIntersection)
+                        local edgeIds = nodeEdgeBeforeIntersection.signalEdgeId == inEdgeId
+                            and {inEdgeId}
+                            or {nodeEdgeBeforeIntersection.signalEdgeId, inEdgeId}
+                        logger.print('edgeIds for detecting priority trains =') logger.debugPrint(edgeIds)
+                        -- in the following, false means "only occupied now", true means "occupied nor or soon"
+                        -- "soon" means "since a vehicle left the last station and before it reaches the next"
+                        local vehicleIdsNearPrioritySignals = api.engine.system.transportVehicleSystem.getVehicles(edgeIds, false)
+                        for _, vehicleId in pairs(vehicleIdsNearPrioritySignals) do
+                            local movePath = api.engine.getComponent(vehicleId, api.type.ComponentType.MOVE_PATH)
+                            local pathEdgeCount = #movePath.path.edges
+                            for p = movePath.dyn.pathPos.edgeIndex + 1, pathEdgeCount, 1 do
+                                local currentMovePathBit = movePath.path.edges[p]
+                                if currentMovePathBit.edgeId.entity == inEdgeId then
+                                    -- return trains heading for the intersection
+                                    if currentMovePathBit.dir == nodeEdgeBeforeIntersection.isHaveWayEdgeDirTowardsIntersection then
+                                        results_indexed[vehicleId] = true
+                                        hasRecords = true
+                                        logger.print('vehicle ' .. vehicleId .. ' counted coz is heading towards the intersection')
+                                        break
+                                    -- ignore trains heading out of the intersection
+                                    else
+                                        logger.print('vehicle ' .. vehicleId .. ' ignored coz is going away from the intersection')
+                                        break
+                                    end
+                                end
+                            end
+
+                        end
+                    end
+                    return hasRecords, results_indexed
+                end
+
                 local _isTrainBoundForEdgeOrNodeId = function(vehicleId, edgeId)
                     local movePath = api.engine.getComponent(vehicleId, api.type.ComponentType.MOVE_PATH)
                     local pathEdgeCount = #movePath.path.edges
@@ -842,7 +884,10 @@ return {
 
                 for intersectionNodeId, nodeEdgeBeforeIntersection_indexedBy_inEdgeId in pairs(nodeEdgeBeforeIntersection_indexedBy_intersectionNodeId_edgeIdHavingWay) do
                     logger.print('intersectionNodeId = ' .. intersectionNodeId .. '; nodeEdgeBeforeIntersection_indexedBy_inEdgeId =') logger.debugPrint(nodeEdgeBeforeIntersection_indexedBy_inEdgeId)
-                    local hasVehicleIdsNearPrioritySignals, vehicleIdsNearPrioritySignals = _getVehicleIdsNearPrioritySignals(nodeEdgeBeforeIntersection_indexedBy_inEdgeId)
+                    -- this assumes one-way priority signals
+                    -- local hasVehicleIdsNearPrioritySignals, vehicleIdsNearPrioritySignals = _getVehicleIdsNearPrioritySignals(nodeEdgeBeforeIntersection_indexedBy_inEdgeId)
+                    -- this should work with two-way priority signals
+                    local hasVehicleIdsNearPrioritySignals, vehicleIdsNearPrioritySignals = _getVehicleIdsBoundForPrioritySignals(nodeEdgeBeforeIntersection_indexedBy_inEdgeId)
                     logger.print('vehicleIdsNearPrioritySignals =') logger.debugPrint(vehicleIdsNearPrioritySignals)
                     if hasVehicleIdsNearPrioritySignals then
                         for edgeIdGivingWay, nodeEdgeIdBehindIntersection in pairs(nodeEdgeBehindIntersection_indexedBy_intersectionNodeId_edgeIdGivingWay[intersectionNodeId]) do
