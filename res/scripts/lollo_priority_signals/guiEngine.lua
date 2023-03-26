@@ -49,7 +49,7 @@ return {
                         args.proposal.proposal.addedSegments[1].trackEdge.trackType
                     logger.print('signalId =') logger.debugPrint(signalId)
                     -- automatically destroy two-way priority signals as soon as they are built
-                    -- if not(signalHelpers.getSignalIsOneWay(signalId)) then
+                    -- if not(signalHelpers.isSignalOneWay(signalId)) then
                     --     _sendScriptEvent(constants.events.removeSignal, {objectId = signalId})
                     --     -- LOLLO TODO issue a warning to the user
                     -- -- automatically destroy one-way priority signals built before, if there is a new one on the same edge.
