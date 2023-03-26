@@ -1,11 +1,15 @@
-local _isExtendedLogActive = true
+local _isExtendedLogActive = false
 local _isWarningLogActive = true
 local _isErrorLogActive = true
 local _isTimersActive = true
+local _isTestMode = false
 
 return {
     isExtendedLog = function()
         return _isExtendedLogActive
+    end,
+    isTestMode = function()
+        return _isTestMode
     end,
     print = function(...)
         if not(_isExtendedLogActive) then return end
