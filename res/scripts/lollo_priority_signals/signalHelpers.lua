@@ -250,7 +250,7 @@ funcs.isOneWaySignalAgainstEdgeDirection = function(signalId)
     return false, edgeId
 end
 ---@param signalId integer
----@return {baseEdge: any, edgeId: integer, inEdgeId: integer, isFound: boolean, isGoAhead: boolean, isHaveWayEdgeDirTowardsIntersection: boolean, nodeId: integer, startNodeId: integer}
+---@return {baseEdge: any, edgeId: integer, inEdgeId: integer, isFound: boolean, isGoAhead: boolean, isPriorityEdgeDirTowardsIntersection: boolean, nodeId: integer, startNodeId: integer}
 funcs.getNextIntersectionBehind = function(signalId)
     logger.print('getNextIntersection starting, signalId = ' .. signalId)
     local _getNextIntersection = function(edgeId, baseEdge, startNodeId)
@@ -279,7 +279,7 @@ funcs.getNextIntersectionBehind = function(signalId)
                 inEdgeId = edgeId,
                 isFound = true,
                 isGoAhead = false,
-                isHaveWayEdgeDirTowardsIntersection = startNodeId == baseEdge.node1,
+                isPriorityEdgeDirTowardsIntersection = startNodeId == baseEdge.node1,
                 nodeId = startNodeId,
             }
         end
@@ -300,13 +300,13 @@ funcs.getNextIntersectionBehind = function(signalId)
     return intersectionProps
 end
 ---comment
----@param nodeEdgeBeforeIntersection_indexedBy_intersectionNodeId_edgeIdHavingWay table<integer, table<integer, integer[]>>
+---@param nodeEdgeBeforeIntersection_indexedBy_intersectionNodeId_inEdgeId table<integer, table<integer, integer[]>>
 ---@param prioritySignals_indexed table<integer, integer>
 ---@return table<integer, table<integer, {isGiveWayEdgeDirTowardsIntersection: boolean, nodeIdTowardsIntersection: integer}>> -- intersection node id, edgeId that gives way, its direction, nodeId towards intersection
-funcs.getNextLightsOrStations = function(nodeEdgeBeforeIntersection_indexedBy_intersectionNodeId_edgeIdHavingWay, prioritySignals_indexed)
+funcs.getNextLightsOrStations = function(nodeEdgeBeforeIntersection_indexedBy_intersectionNodeId_inEdgeId, prioritySignals_indexed)
     -- local edgeIdsGivingWay = {} -- this is only for testing
     -- local nodeEdgeTowardsIntersection_indexedBy_prioritySignalId_edgeIdGivingWay = {}
-    local nodeEdgeBehindIntersection_indexedBy_intersectionNodeId_edgeIdGivingWay = {}
+    local nodeEdgeBehindIntersection_indexedBy_intersectionNodeId_inEdgeId = {}
 
     -- local _addEdgeGivingWay = function(edgeIdGivingWay, baseEdge, nodeIdTowardsIntersection, prioritySignalIds_indexedBy_inEdgeId)
     --     logger.print('_addEdgeGivingWay starting, edgeIdGivingWay = ' .. edgeIdGivingWay)
@@ -329,14 +329,14 @@ funcs.getNextLightsOrStations = function(nodeEdgeBeforeIntersection_indexedBy_in
     -- end
     local _addEdgeGivingWay2 = function(edgeIdGivingWay, baseEdge, nodeIdTowardsIntersection, intersectionNodeId)
         logger.print('_addEdgeGivingWay2 starting, edgeIdGivingWay = ' .. edgeIdGivingWay)
-        if not(nodeEdgeBehindIntersection_indexedBy_intersectionNodeId_edgeIdGivingWay[intersectionNodeId]) then
-            nodeEdgeBehindIntersection_indexedBy_intersectionNodeId_edgeIdGivingWay[intersectionNodeId] =
+        if not(nodeEdgeBehindIntersection_indexedBy_intersectionNodeId_inEdgeId[intersectionNodeId]) then
+            nodeEdgeBehindIntersection_indexedBy_intersectionNodeId_inEdgeId[intersectionNodeId] =
             {[edgeIdGivingWay] = {
                 isGiveWayEdgeDirTowardsIntersection = baseEdge.node1 == nodeIdTowardsIntersection,
                 nodeIdTowardsIntersection = nodeIdTowardsIntersection,
             }}
         else
-            nodeEdgeBehindIntersection_indexedBy_intersectionNodeId_edgeIdGivingWay[intersectionNodeId][edgeIdGivingWay] = {
+            nodeEdgeBehindIntersection_indexedBy_intersectionNodeId_inEdgeId[intersectionNodeId][edgeIdGivingWay] = {
                 isGiveWayEdgeDirTowardsIntersection = baseEdge.node1 == nodeIdTowardsIntersection,
                 nodeIdTowardsIntersection = nodeIdTowardsIntersection,
             }
@@ -413,7 +413,7 @@ funcs.getNextLightsOrStations = function(nodeEdgeBeforeIntersection_indexedBy_in
         end
     end
 
-    for intersectionNodeId, nodeEdgeBeforeIntersection_indexedBy_inEdgeId in pairs(nodeEdgeBeforeIntersection_indexedBy_intersectionNodeId_edgeIdHavingWay) do
+    for intersectionNodeId, nodeEdgeBeforeIntersection_indexedBy_inEdgeId in pairs(nodeEdgeBeforeIntersection_indexedBy_intersectionNodeId_inEdgeId) do
         local connectedEdgeIds = funcs.getConnectedEdgeIdsExceptSome(nodeEdgeBeforeIntersection_indexedBy_inEdgeId, intersectionNodeId)
         logger.print('_getNext1 got intersectionNodeId = ' .. intersectionNodeId .. ', connectedEdgeIds =') logger.debugPrint(connectedEdgeIds)
         _getNext2(connectedEdgeIds, intersectionNodeId, intersectionNodeId, _getNext2, 0, nodeEdgeBeforeIntersection_indexedBy_inEdgeId)
@@ -421,7 +421,7 @@ funcs.getNextLightsOrStations = function(nodeEdgeBeforeIntersection_indexedBy_in
 
     -- return edgeIdsGivingWay, nodeEdgeTowardsIntersection_indexedBy_prioritySignalId_edgeIdGivingWay
     -- return nodeEdgeTowardsIntersection_indexedBy_prioritySignalId_edgeIdGivingWay
-    return nodeEdgeBehindIntersection_indexedBy_intersectionNodeId_edgeIdGivingWay
+    return nodeEdgeBehindIntersection_indexedBy_intersectionNodeId_inEdgeId
 end
 
 return funcs
