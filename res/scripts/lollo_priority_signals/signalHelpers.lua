@@ -239,8 +239,28 @@ funcs.isOneWaySignalAgainstEdgeDirection = function(signalId)
 
     -- signal.type == 0 -- two-way signal
     -- signal.type == 1 -- one-way signal
-    -- signal.type == 1 -- waypoint
+    -- signal.type == 2 -- waypoint
     if signal.type == 1 then -- one-way signal
+        local signalAgainst = api.engine.system.signalSystem.getSignal(api.type.EdgeId.new(edgeId, signal.edgePr.index), false)
+        if signalAgainst.entity == signalId then return true, edgeId end
+        -- local signalAlong = api.engine.system.signalSystem.getSignal(api.type.EdgeId.new(edgeId_, signal.edgePr.index), true)
+        -- if signalAlong.entity == edgeObjectId then isSignalAlong = true end
+    end
+
+    return false, edgeId
+end
+---@param signalId integer
+---@return boolean
+---@return integer
+funcs.isSignalAgainstEdgeDirection = function(signalId)
+    local signalList = api.engine.getComponent(signalId, api.type.ComponentType.SIGNAL_LIST)
+    local signal = signalList.signals[1]
+    local edgeId = signal.edgePr.entity
+
+    -- signal.type == 0 -- two-way signal
+    -- signal.type == 1 -- one-way signal
+    -- signal.type == 2 -- waypoint
+    if signal.type == 0 or signal.type == 1 then -- two-way or one-way signal
         local signalAgainst = api.engine.system.signalSystem.getSignal(api.type.EdgeId.new(edgeId, signal.edgePr.index), false)
         if signalAgainst.entity == signalId then return true, edgeId end
         -- local signalAlong = api.engine.system.signalSystem.getSignal(api.type.EdgeId.new(edgeId_, signal.edgePr.index), true)
@@ -285,7 +305,7 @@ funcs.getNextIntersectionBehind = function(signalId)
         end
     end
 
-    local isSignalAgainst, edgeId = funcs.isOneWaySignalAgainstEdgeDirection(signalId)
+    local isSignalAgainst, edgeId = funcs.isSignalAgainstEdgeDirection(signalId)
     logger.print('isSignalAgainst = ' .. tostring(isSignalAgainst))
     local baseEdge = api.engine.getComponent(edgeId, api.type.ComponentType.BASE_EDGE)
     local startNodeId = isSignalAgainst and baseEdge.node0 or baseEdge.node1
