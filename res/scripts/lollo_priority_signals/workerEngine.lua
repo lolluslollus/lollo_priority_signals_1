@@ -12,7 +12,7 @@ local nodeEdgeBehindIntersection_indexedBy_intersectionNodeId_inEdgeId = {}
 local stopGameTimes_indexedBy_stoppedVehicleIds = {}
 
 local _utils = {
-    -- -@param nodeEdgeBeforeIntersection_indexedBy_inEdgeId table<integer, { isPriorityEdgeDirTowardsIntersection: boolean, signalEdgeId: integer, signalId: integer }>
+    -- -@param nodeEdgeBeforeIntersection_indexedBy_inEdgeId table<integer, { isPriorityEdgeDirTowardsIntersection: boolean, farthestPriorityEdgeId: integer, signalId: integer }>
     -- -@return boolean
     -- -@return table<integer, boolean>
     -- _getVehicleIdsNearPrioritySignals = function(nodeEdgeBeforeIntersection_indexedBy_inEdgeId)
@@ -22,9 +22,9 @@ local _utils = {
 
     --     for inEdgeId, nodeEdgeBeforeIntersection in pairs(nodeEdgeBeforeIntersection_indexedBy_inEdgeId) do
     --         logger.print('inEdgeId = ' .. inEdgeId .. ', nodeEdgeBeforeIntersection =') logger.debugPrint(nodeEdgeBeforeIntersection)
-    --         local edgeIds = nodeEdgeBeforeIntersection.signalEdgeId == inEdgeId
+    --         local edgeIds = nodeEdgeBeforeIntersection.farthestPriorityEdgeId == inEdgeId
     --             and {inEdgeId}
-    --             or {nodeEdgeBeforeIntersection.signalEdgeId, inEdgeId}
+    --             or {nodeEdgeBeforeIntersection.farthestPriorityEdgeId, inEdgeId}
     --         logger.print('edgeIds for detecting priority trains =') logger.debugPrint(edgeIds)
     --         -- in the following, false means "only occupied now", true means "occupied nor or soon"
     --         -- "soon" means "since a vehicle left the last station and before it reaches the next"
@@ -37,7 +37,7 @@ local _utils = {
     --     return hasRecords, results_indexed
     -- end,
 
-    ---@param nodeEdgeBeforeIntersection_indexedBy_inEdgeId table<integer, { isPriorityEdgeDirTowardsIntersection: boolean, signalEdgeId: integer, signalId: integer }>
+    ---@param nodeEdgeBeforeIntersection_indexedBy_inEdgeId table<integer, { isPriorityEdgeDirTowardsIntersection: boolean, farthestPriorityEdgeId: integer, signalId: integer }>
     ---@param isGetStoppedVehicles? boolean also get stopped vehicles, useful for testing
     ---@return boolean
     ---@return table<integer, boolean>
@@ -48,9 +48,9 @@ local _utils = {
 
         for inEdgeId, nodeEdgeBeforeIntersection in pairs(nodeEdgeBeforeIntersection_indexedBy_inEdgeId) do
             logger.print('inEdgeId = ' .. inEdgeId .. ', nodeEdgeBeforeIntersection =') logger.debugPrint(nodeEdgeBeforeIntersection)
-            local edgeIds = nodeEdgeBeforeIntersection.signalEdgeId == inEdgeId
+            local edgeIds = nodeEdgeBeforeIntersection.farthestPriorityEdgeId == inEdgeId
                 and {inEdgeId}
-                or {nodeEdgeBeforeIntersection.signalEdgeId, inEdgeId}
+                or {nodeEdgeBeforeIntersection.farthestPriorityEdgeId, inEdgeId}
             logger.print('edgeIds for detecting priority trains =') logger.debugPrint(edgeIds)
             -- in the following, false means "only occupied now", true means "occupied nor or soon"
             -- "soon" means "since a vehicle left the last station and before it reaches the next"
@@ -205,7 +205,7 @@ return {
                     -- However, different priority signals might share the same intersection node,
                     -- so I have a table of tables.
                     -- nodeId, inEdgeId, props
-                    ---@type table<integer, table<integer, {isPriorityEdgeDirTowardsIntersection: boolean, signalEdgeId: integer, signalId: integer}>>
+                    ---@type table<integer, table<integer, {isPriorityEdgeDirTowardsIntersection: boolean, farthestPriorityEdgeId: integer, signalId: integer}>>
                     nodeEdgeBeforeIntersection_indexedBy_intersectionNodeId_inEdgeId = {}
                     for _, signalId in pairs(allPrioritySignalIds) do
                         edgeIdsWithPrioritySignals_indexedBy_signalId[signalId] = _edgeObject2EdgeMap[signalId]
@@ -216,14 +216,14 @@ return {
                                 nodeEdgeBeforeIntersection_indexedBy_intersectionNodeId_inEdgeId[intersectionProps.nodeId] =
                                 {[intersectionProps.inEdgeId] = {
                                     isPriorityEdgeDirTowardsIntersection = intersectionProps.isPriorityEdgeDirTowardsIntersection,
-                                    signalEdgeId = _edgeObject2EdgeMap[signalId],
+                                    farthestPriorityEdgeId = intersectionProps.farthestPriorityEdgeId,
                                     signalId = signalId
                                 }}
                             else
                                 nodeEdgeBeforeIntersection_indexedBy_intersectionNodeId_inEdgeId[intersectionProps.nodeId][intersectionProps.inEdgeId] =
                                 {
                                     isPriorityEdgeDirTowardsIntersection = intersectionProps.isPriorityEdgeDirTowardsIntersection,
-                                    signalEdgeId = _edgeObject2EdgeMap[signalId],
+                                    farthestPriorityEdgeId = intersectionProps.farthestPriorityEdgeId,
                                     signalId = signalId
                                 }
                             end
