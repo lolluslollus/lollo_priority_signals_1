@@ -320,17 +320,19 @@ funcs.getNextIntersectionBehind = function(signalId)
     local startNodeId = isSignalAgainst and baseEdge.node0 or baseEdge.node1
 
     local intersectionProps = _getNextIntersectionBehind(signalEdgeId, baseEdge, startNodeId)
+    local priorityEdgeIds = { signalEdgeId }
     local count, _maxCount = 1, constants.maxNSegmentsBeforeIntersection
     while intersectionProps.isGoAhead and count < _maxCount do
         intersectionProps = _getNextIntersectionBehind(intersectionProps.edgeId, intersectionProps.baseEdge, intersectionProps.startNodeId)
+        priorityEdgeIds[#priorityEdgeIds+1] = intersectionProps.inEdgeId
         count = count + 1
     end
-
+    -- add a couple of segments before the priority light, not farther than the next intersection,
+    -- to make the priority computation more aggressive.
     if intersectionProps.isFound then
         startNodeId = isSignalAgainst and baseEdge.node1 or baseEdge.node0
         local farthestEdgeProps = _getFarthestPriorityEdgeId(signalEdgeId, baseEdge, startNodeId)
-        local priorityEdgeIds = { farthestEdgeProps.inEdgeId }
-        count, _maxCount = 1, constants.maxNSegmentsBeforeIntersection
+        count, _maxCount = 1, constants.maxNSegmentsBeforePriorityLight
         while farthestEdgeProps.isGoAhead and count < _maxCount do
             farthestEdgeProps = _getFarthestPriorityEdgeId(farthestEdgeProps.edgeId, farthestEdgeProps.baseEdge, farthestEdgeProps.startNodeId)
             priorityEdgeIds[#priorityEdgeIds+1] = farthestEdgeProps.inEdgeId

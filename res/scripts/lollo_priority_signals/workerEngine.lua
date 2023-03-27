@@ -1,6 +1,7 @@
-local logger = require ('lollo_priority_signals.logger')
+local arrayUtils = require ('lollo_priority_signals.arrayUtils')
 local constants = require('lollo_priority_signals.constants')
 local edgeUtils = require('lollo_priority_signals.edgeUtils')
+local logger = require ('lollo_priority_signals.logger')
 local signalHelpers = require('lollo_priority_signals.signalHelpers')
 local stateHelpers = require('lollo_priority_signals.stateHelpers')
 
@@ -12,7 +13,7 @@ local nodeEdgeBehindIntersection_indexedBy_intersectionNodeId_inEdgeId = {}
 local stopGameTimes_indexedBy_stoppedVehicleIds = {}
 
 local _utils = {
-    ---@param nodeEdgeBeforeIntersection_indexedBy_inEdgeId table<integer, { isPriorityEdgeDirTowardsIntersection: boolean, priorityEdgeIds: integer[], signalId: integer }>
+    ---@param nodeEdgeBeforeIntersection_indexedBy_inEdgeId table<integer, { isPriorityEdgeDirTowardsIntersection: boolean, priorityEdgeIds: integer[] }>
     ---@param isGetStoppedVehicles? boolean also get stopped vehicles, useful for testing
     ---@return boolean
     ---@return table<integer, boolean>
@@ -178,7 +179,7 @@ return {
                     -- However, different priority signals might share the same intersection node,
                     -- so I have a table of tables.
                     -- nodeId, inEdgeId, props
-                    ---@type table<integer, table<integer, {isPriorityEdgeDirTowardsIntersection: boolean, priorityEdgeIds: integer[], signalId: integer}>>
+                    ---@type table<integer, table<integer, {isPriorityEdgeDirTowardsIntersection: boolean, priorityEdgeIds: integer[]}>>
                     nodeEdgeBeforeIntersection_indexedBy_intersectionNodeId_inEdgeId = {}
                     for _, signalId in pairs(allPrioritySignalIds) do
                         edgeIdsWithPrioritySignals_indexedBy_signalId[signalId] = _edgeObject2EdgeMap[signalId]
@@ -190,15 +191,19 @@ return {
                                 {[intersectionProps.inEdgeId] = {
                                     isPriorityEdgeDirTowardsIntersection = intersectionProps.isPriorityEdgeDirTowardsIntersection,
                                     priorityEdgeIds = intersectionProps.priorityEdgeIds,
-                                    signalId = signalId
                                 }}
-                            else
+                            elseif not(nodeEdgeBeforeIntersection_indexedBy_intersectionNodeId_inEdgeId[intersectionProps.nodeId][intersectionProps.inEdgeId]) then
                                 nodeEdgeBeforeIntersection_indexedBy_intersectionNodeId_inEdgeId[intersectionProps.nodeId][intersectionProps.inEdgeId] =
                                 {
                                     isPriorityEdgeDirTowardsIntersection = intersectionProps.isPriorityEdgeDirTowardsIntersection,
                                     priorityEdgeIds = intersectionProps.priorityEdgeIds,
-                                    signalId = signalId
                                 }
+                            else
+                                nodeEdgeBeforeIntersection_indexedBy_intersectionNodeId_inEdgeId[intersectionProps.nodeId][intersectionProps.inEdgeId].priorityEdgeIds =
+                                arrayUtils.getUniqueConcatValues(
+                                    nodeEdgeBeforeIntersection_indexedBy_intersectionNodeId_inEdgeId[intersectionProps.nodeId][intersectionProps.inEdgeId].priorityEdgeIds,
+                                    intersectionProps.priorityEdgeIds
+                                )
                             end
                         end
                     end

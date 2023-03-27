@@ -66,6 +66,27 @@ arrayUtils.concatValues = function(table1, table2)
     end
 end
 
+arrayUtils.getUniqueConcatValues = function(table1, table2)
+    if type(table1) ~= 'table' or type(table2) ~= 'table' then
+        return {}
+    end
+    local table1_indexed, table2_indexed = {}, {}
+    for _, value in pairs(table1) do
+        table1_indexed[value] = true
+    end
+    for _, value in pairs(table2) do
+        table2_indexed[value] = true
+    end
+    for key2, _ in pairs(table2_indexed) do
+        table1_indexed[key2] = true
+    end
+    local results = {}
+    for key, _ in pairs(table1_indexed) do
+        results[#results+1] = key
+    end
+    return results
+end
+
 arrayUtils.concatKeysValues = function(table1, table2)
     if type(table1) ~= 'table' or type(table2) ~= 'table' then
         return
