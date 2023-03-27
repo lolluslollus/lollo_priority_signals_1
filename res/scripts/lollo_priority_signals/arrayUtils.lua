@@ -1,7 +1,10 @@
 local arrayUtils = {}
 
-arrayUtils.arrayHasValue = function(tab, val)
-    for _, v in pairs(tab) do
+---@param arr any[]
+---@param val any
+---@return boolean
+arrayUtils.arrayHasValue = function(arr, val)
+    for _, v in pairs(arr) do
         if v == val then
             return true
         end
@@ -9,21 +12,32 @@ arrayUtils.arrayHasValue = function(tab, val)
 
     return false
 end
-arrayUtils.addUnique = function(tab, val)
-    if not arrayUtils.arrayHasValue(tab, val) then
-        table.insert(tab, #tab + 1, val)
+
+---@param arr any[]
+---@param val any
+arrayUtils.addUnique = function(arr, val)
+    if not arrayUtils.arrayHasValue(arr, val) then
+        table.insert(arr, val)
     end
 end
+
+---@param arr any[]
+---@param func function(any): any
+---@return any[]
 arrayUtils.map = function(arr, func)
     if type(arr) ~= 'table' then return {} end
-    
+
     local results = {}
     for i = 1, #arr do
-        table.insert(results, #results + 1, func(arr[i]))
+        table.insert(results, func(arr[i]))
     end
     return results
 end
 
+---@param tab table
+---@param fields2Omit string[]
+---@param isTryUserdata? boolean
+---@return table
 arrayUtils.cloneDeepOmittingFields = function(tab, fields2Omit, isTryUserdata)
     local results = {}
     if type(tab) ~= 'table' and not(isTryUserdata and type(tab) == 'userdata') then return results end
@@ -42,6 +56,10 @@ arrayUtils.cloneDeepOmittingFields = function(tab, fields2Omit, isTryUserdata)
     return results
 end
 
+---@param tab table
+---@param fields2Omit string[]
+---@param isTryUserdata? boolean
+---@return table
 arrayUtils.cloneOmittingFields = function(tab, fields2Omit, isTryUserdata)
     local results = {}
     if type(tab) ~= 'table' and not(isTryUserdata and type(tab) == 'userdata') then return results end
@@ -56,25 +74,40 @@ arrayUtils.cloneOmittingFields = function(tab, fields2Omit, isTryUserdata)
     return results
 end
 
-arrayUtils.concatValues = function(table1, table2)
-    if type(table1) ~= 'table' or type(table2) ~= 'table' then
+---@param arr any[] --gets altered in place
+---@param val any
+arrayUtils.concatValue = function(arr, val)
+    if type(arr) ~= 'table' then
         return
     end
 
-    for _, v2 in pairs(table2) do
-        table.insert(table1, #table1 + 1, v2)
+    table.insert(arr, val)
+end
+
+---@param arr1 any[] --gets altered in place
+---@param arr2 any[]
+arrayUtils.concatValues = function(arr1, arr2)
+    if type(arr1) ~= 'table' or type(arr2) ~= 'table' then
+        return
+    end
+
+    for _, v2 in pairs(arr2) do
+        table.insert(arr1, v2)
     end
 end
 
-arrayUtils.getUniqueConcatValues = function(table1, table2)
-    if type(table1) ~= 'table' or type(table2) ~= 'table' then
+---@param arr1 string[]|number[]
+---@param arr2 string[]|number[]
+---@return any[]
+arrayUtils.getUniqueConcatValues = function(arr1, arr2)
+    if type(arr1) ~= 'table' or type(arr2) ~= 'table' then
         return {}
     end
     local table1_indexed, table2_indexed = {}, {}
-    for _, value in pairs(table1) do
+    for _, value in pairs(arr1) do
         table1_indexed[value] = true
     end
-    for _, value in pairs(table2) do
+    for _, value in pairs(arr2) do
         table2_indexed[value] = true
     end
     for key2, _ in pairs(table2_indexed) do
@@ -87,6 +120,8 @@ arrayUtils.getUniqueConcatValues = function(table1, table2)
     return results
 end
 
+---@param table1 table --gets altered in place
+---@param table2 table
 arrayUtils.concatKeysValues = function(table1, table2)
     if type(table1) ~= 'table' or type(table2) ~= 'table' then
         return
@@ -97,21 +132,29 @@ arrayUtils.concatKeysValues = function(table1, table2)
     end
 end
 
-arrayUtils.getFirst = function(tab)
-    if tab == nil or #tab == nil then return nil end
+---@param arr any[]
+---@return nil|any
+arrayUtils.getFirst = function(arr)
+    if arr == nil or #arr == nil then return nil end
 
-    return tab[1]
+    return arr[1]
 end
 
-arrayUtils.getLast = function(tab)
-    if tab == nil or #tab == nil then return nil end
+---@param arr any[]
+---@return nil|any
+arrayUtils.getLast = function(arr)
+    if arr == nil or #arr == nil then return nil end
 
-    return tab[#tab]
+    return arr[#arr]
 end
 
-arrayUtils.sort = function(table0, elementName, asc)
-    if type(table0) ~= 'table' then
-        return table0
+---@param tab table|any[]
+---@param elementName? string
+---@param asc? boolean
+---@return table|any[]
+arrayUtils.sort = function(tab, elementName, asc)
+    if type(tab) ~= 'table' then
+        return tab
     end
 
     if type(asc) ~= 'boolean' then
@@ -120,7 +163,7 @@ arrayUtils.sort = function(table0, elementName, asc)
 
     if type(elementName) == 'string' then
         table.sort(
-            table0,
+            tab,
             function(elem1, elem2)
                 if not elem1 or not elem2 or not (elem1[elementName]) or not (elem2[elementName]) then
                     return true
@@ -133,7 +176,7 @@ arrayUtils.sort = function(table0, elementName, asc)
         )
     else
         table.sort(
-            table0,
+            tab,
             function(elem1, elem2)
                 if not elem1 or not elem2 or not (elem1) or not (elem2) then
                     return true
@@ -146,9 +189,12 @@ arrayUtils.sort = function(table0, elementName, asc)
         )
     end
 
-    return table0
+    return tab
 end
 
+---@param tab table|any[]
+---@param isDiscardNil? boolean
+---@return integer
 arrayUtils.getCount = function(tab, isDiscardNil)
     if type(tab) ~= 'table' and type(tab) ~= 'userdata' then
         return -1
@@ -164,6 +210,10 @@ arrayUtils.getCount = function(tab, isDiscardNil)
     return result
 end
 
+---@param tab table|any[]
+---@param fieldName? string
+---@param fieldValueNonNil any
+---@return integer
 arrayUtils.findIndex = function(tab, fieldName, fieldValueNonNil)
     if type(tab) ~= 'table' or fieldValueNonNil == nil then return -1 end
 
@@ -188,16 +238,8 @@ arrayUtils.findIndex = function(tab, fieldName, fieldValueNonNil)
     return -1
 end
 
-arrayUtils.addProps = function(baseTab, addedTab)
-    if type(baseTab) ~= 'table' or type(addedTab) ~= 'table' then return baseTab end
-
-    for k, v in pairs(addedTab) do
-        baseTab[k] = v
-    end
-
-    return baseTab
-end
-
+---@param tab any[]
+---@return any[]
 arrayUtils.getReversed = function(tab)
     if type(tab) ~= 'table' then return tab end
 
