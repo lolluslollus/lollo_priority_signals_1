@@ -240,7 +240,7 @@ local _getNextIntersectionBehind = function(edgeId, baseEdge, startNodeId, prior
     logger.print('_getNextIntersectionBehind starting, edgeId_ = ' .. edgeId .. ', startNodeId_ = ' .. startNodeId)
     local nextEdgeIds = funcs.getConnectedEdgeIdsExceptOne(edgeId, startNodeId)
     local nextEdgeIdsCount = #nextEdgeIds
-    arrayUtils.concatValue(priorityEdgeIds, edgeId)
+    table.insert(priorityEdgeIds, edgeId)
 
     -- elseif funcs.isEdgeFrozen_FAST(edgeId) then -- station or depot: do nothing
     --     return { isGoAhead = false, priorityEdgeIds = priorityEdgeIds }
@@ -288,7 +288,7 @@ local _getPrecedingPriorityEdgeId = function(signalEdgeId, edgeId, baseEdge, sta
     logger.print('_getPrecedingPriorityEdgeId starting, edgeId_ = ' .. edgeId .. ', startNodeId_ = ' .. startNodeId)
     local nextEdgeIds = funcs.getConnectedEdgeIdsExceptOne(edgeId, startNodeId)
     local nextEdgeIdsCount = #nextEdgeIds
-    if signalEdgeId ~= edgeId then arrayUtils.concatValue(priorityEdgeIds, edgeId) end
+    if signalEdgeId ~= edgeId then table.insert(priorityEdgeIds, edgeId) end
 
 
     -- elseif funcs.isEdgeFrozen_FAST(edgeId) then -- station or depot: do nothing

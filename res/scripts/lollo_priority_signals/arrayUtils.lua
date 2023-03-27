@@ -74,16 +74,6 @@ arrayUtils.cloneOmittingFields = function(tab, fields2Omit, isTryUserdata)
     return results
 end
 
----@param arr any[] --gets altered in place
----@param val any
-arrayUtils.concatValue = function(arr, val)
-    if type(arr) ~= 'table' then
-        return
-    end
-
-    table.insert(arr, val)
-end
-
 ---@param arr1 any[] --gets altered in place
 ---@param arr2 any[]
 arrayUtils.concatValues = function(arr1, arr2)
