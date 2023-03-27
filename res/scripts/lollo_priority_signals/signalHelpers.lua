@@ -214,7 +214,7 @@ local funcs = {
 
 ---@param baseEdge table
 ---@return boolean
-funcs.hasOpposingOneWaySignals = function(baseEdge)
+local _hasOpposingOneWaySignals = function(baseEdge)
     local lastSignalDirection = 0
     for _, object in pairs(baseEdge.objects) do
         local objectId = object[1]
@@ -242,7 +242,7 @@ local _getNextIntersectionBehind = function(edgeId, baseEdge, startNodeId)
         return { isGoAhead = false, }
     elseif funcs.isEdgeFrozen_FAST(edgeId) then -- station or depot: do nothing
         return { isGoAhead = false, }
-    elseif funcs.hasOpposingOneWaySignals(baseEdge) then -- baseEdge has opposing one-way signals: do nothing coz no trains will get through
+    elseif _hasOpposingOneWaySignals(baseEdge) then -- baseEdge has opposing one-way signals: do nothing coz no trains will get through
         return { isGoAhead = false, }
     end
 
@@ -265,21 +265,29 @@ local _getNextIntersectionBehind = function(edgeId, baseEdge, startNodeId)
         }
     end
 end
----identical to _getNextIntersectionBehind, except it does not stop at frozen edges
+
 ---@param edgeId integer
 ---@param baseEdge table
 ---@param startNodeId integer
----@return {baseEdge: table, edgeId: integer, inEdgeId: integer, isFound: boolean, isGoAhead: boolean, isPriorityEdgeDirTowardsIntersection: boolean, nodeId: integer, startNodeId: integer}
+---@return {baseEdge: table, edgeId: integer, inEdgeId: integer, isGoAhead: boolean, isPriorityEdgeDirTowardsIntersection: boolean, startNodeId: integer}
 local _getFarthestPriorityEdgeId = function(edgeId, baseEdge, startNodeId)
     logger.print('_getFarthestPriorityEdgeId starting, edgeId_ = ' .. edgeId .. ', startNodeId_ = ' .. startNodeId)
     local nextEdgeIds = funcs.getConnectedEdgeIdsExceptOne(edgeId, startNodeId)
     local nextEdgeIdsCount = #nextEdgeIds
     if nextEdgeIdsCount == 0 then -- end of line: do nothing
-        return { isGoAhead = false, }
+        return {
+            inEdgeId = edgeId,
+            isGoAhead = false,
+            isPriorityEdgeDirTowardsIntersection = startNodeId == baseEdge.node1,
+        }
     -- elseif funcs.isEdgeFrozen_FAST(edgeId) then -- station or depot: do nothing
     --     return { isGoAhead = false, }
-    elseif funcs.hasOpposingOneWaySignals(baseEdge) then -- baseEdge has opposing one-way signals: do nothing coz no trains will get through
-        return { isGoAhead = false, }
+    elseif _hasOpposingOneWaySignals(baseEdge) then -- baseEdge has opposing one-way signals: do nothing coz no trains will get through
+        return {
+            inEdgeId = edgeId,
+            isGoAhead = false,
+            isPriorityEdgeDirTowardsIntersection = startNodeId == baseEdge.node1,
+        }
     end
 
     if nextEdgeIdsCount == 1 then -- try the next edge
@@ -288,16 +296,16 @@ local _getFarthestPriorityEdgeId = function(edgeId, baseEdge, startNodeId)
         return {
             baseEdge = nextBaseEdge,
             edgeId = nextEdgeId,
+            inEdgeId = edgeId,
             isGoAhead = true,
+            isPriorityEdgeDirTowardsIntersection = startNodeId == baseEdge.node1,
             startNodeId = startNodeId == nextBaseEdge.node0 and nextBaseEdge.node1 or nextBaseEdge.node0
         }
     else -- startNodeId is an intersection
         return {
             inEdgeId = edgeId,
-            isFound = true,
             isGoAhead = false,
             isPriorityEdgeDirTowardsIntersection = startNodeId == baseEdge.node1,
-            nodeId = startNodeId,
         }
     end
 end
@@ -326,11 +334,8 @@ funcs.getNextIntersectionBehind = function(signalId)
             farthestEdgeProps = _getFarthestPriorityEdgeId(farthestEdgeProps.edgeId, farthestEdgeProps.baseEdge, farthestEdgeProps.startNodeId)
             count = count + 1
         end
-        if farthestEdgeProps.isFound then
-            intersectionProps.farthestPriorityEdgeId = farthestEdgeProps.inEdgeId
-        else
-            intersectionProps.farthestPriorityEdgeId = signalEdgeId
-        end
+
+        intersectionProps.farthestPriorityEdgeId = farthestEdgeProps.inEdgeId
     end
 
     logger.print('getNextIntersectionBehind about to return') logger.debugPrint(intersectionProps)
