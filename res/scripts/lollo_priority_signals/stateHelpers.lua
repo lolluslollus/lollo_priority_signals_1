@@ -7,8 +7,8 @@ local _initState = function()
         persistent_state.world_time_sec = 0
     end
 
-    if persistent_state.is_on ~= true then
-        persistent_state.is_on = false
+    if persistent_state.is_on ~= false then
+        persistent_state.is_on = true
     end
 end
 
