@@ -310,7 +310,7 @@ local _getFarthestPriorityEdgeId = function(edgeId, baseEdge, startNodeId)
     end
 end
 ---@param signalId integer
----@return {baseEdge: any, edgeId: integer, farthestPriorityEdgeId: integer, inEdgeId: integer, isFound: boolean, isGoAhead: boolean, isPriorityEdgeDirTowardsIntersection: boolean, nodeId: integer, startNodeId: integer}
+---@return {baseEdge: any, edgeId: integer, inEdgeId: integer, isFound: boolean, isGoAhead: boolean, isPriorityEdgeDirTowardsIntersection: boolean, nodeId: integer, priorityEdgeIds: integer[], startNodeId: integer}
 funcs.getNextIntersectionBehind = function(signalId)
     logger.print('getNextIntersection starting, signalId = ' .. signalId)
 
@@ -329,13 +329,15 @@ funcs.getNextIntersectionBehind = function(signalId)
     if intersectionProps.isFound then
         startNodeId = isSignalAgainst and baseEdge.node1 or baseEdge.node0
         local farthestEdgeProps = _getFarthestPriorityEdgeId(signalEdgeId, baseEdge, startNodeId)
+        local priorityEdgeIds = { farthestEdgeProps.inEdgeId }
         count, _maxCount = 1, constants.maxNSegmentsBeforeIntersection
         while farthestEdgeProps.isGoAhead and count < _maxCount do
             farthestEdgeProps = _getFarthestPriorityEdgeId(farthestEdgeProps.edgeId, farthestEdgeProps.baseEdge, farthestEdgeProps.startNodeId)
+            priorityEdgeIds[#priorityEdgeIds+1] = farthestEdgeProps.inEdgeId
             count = count + 1
         end
 
-        intersectionProps.farthestPriorityEdgeId = farthestEdgeProps.inEdgeId
+        intersectionProps.priorityEdgeIds = priorityEdgeIds
     end
 
     logger.print('getNextIntersectionBehind about to return') logger.debugPrint(intersectionProps)
