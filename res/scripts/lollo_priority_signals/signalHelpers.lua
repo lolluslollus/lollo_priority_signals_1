@@ -270,8 +270,8 @@ end
 ---@param baseEdge table
 ---@param startNodeId integer
 ---@return {baseEdge: table, edgeId: integer, inEdgeId: integer, isGoAhead: boolean, isPriorityEdgeDirTowardsIntersection: boolean, startNodeId: integer}
-local _getFarthestPriorityEdgeId = function(edgeId, baseEdge, startNodeId)
-    logger.print('_getFarthestPriorityEdgeId starting, edgeId_ = ' .. edgeId .. ', startNodeId_ = ' .. startNodeId)
+local _getPrecedingPriorityEdgeId = function(edgeId, baseEdge, startNodeId)
+    logger.print('_getPrecedingPriorityEdgeId starting, edgeId_ = ' .. edgeId .. ', startNodeId_ = ' .. startNodeId)
     local nextEdgeIds = funcs.getConnectedEdgeIdsExceptOne(edgeId, startNodeId)
     local nextEdgeIdsCount = #nextEdgeIds
     if nextEdgeIdsCount == 0 then -- end of line: do nothing
@@ -329,13 +329,13 @@ funcs.getNextIntersectionBehind = function(signalId)
     end
     -- add a couple of segments before the priority light, not farther than the next intersection,
     -- to make the priority computation more aggressive.
-    if intersectionProps.isFound then
+    if intersectionProps.isFound and constants.maxNSegmentsBeforePriorityLight > 1 then
         startNodeId = isSignalAgainst and baseEdge.node1 or baseEdge.node0
-        local farthestEdgeProps = _getFarthestPriorityEdgeId(signalEdgeId, baseEdge, startNodeId)
+        local precedingEdgeProps = _getPrecedingPriorityEdgeId(signalEdgeId, baseEdge, startNodeId)
         count, _maxCount = 1, constants.maxNSegmentsBeforePriorityLight
-        while farthestEdgeProps.isGoAhead and count < _maxCount do
-            farthestEdgeProps = _getFarthestPriorityEdgeId(farthestEdgeProps.edgeId, farthestEdgeProps.baseEdge, farthestEdgeProps.startNodeId)
-            priorityEdgeIds[#priorityEdgeIds+1] = farthestEdgeProps.inEdgeId
+        while precedingEdgeProps.isGoAhead and count < _maxCount do
+            precedingEdgeProps = _getPrecedingPriorityEdgeId(precedingEdgeProps.edgeId, precedingEdgeProps.baseEdge, precedingEdgeProps.startNodeId)
+            priorityEdgeIds[#priorityEdgeIds+1] = precedingEdgeProps.inEdgeId
             count = count + 1
         end
 
