@@ -349,6 +349,7 @@ funcs.getNextIntersectionBehind = function(signalId)
             precedingEdgeProps = _findPrecedingPriorityEdgeId(_signalEdgeId, precedingEdgeProps.edgeId, precedingEdgeProps.baseEdge, precedingEdgeProps.startNodeId, precedingEdgeProps.priorityEdgeIds)
             count = count + 1
         end
+        -- updating precedingEdgeProps may seem useless at first sight, but it updates intersectionProps.priorityEdgeIds
     end
 
     logger.print('getNextIntersectionBehind about to return') logger.debugPrint(intersectionProps)
