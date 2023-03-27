@@ -236,11 +236,10 @@ end
 ---@param startNodeId integer
 ---@param priorityEdgeIds integer[]
 ---@return {baseEdge: table, edgeId: integer, inEdgeId: integer, isFound: boolean, isGoAhead: boolean, isPriorityEdgeDirTowardsIntersection: boolean, nodeId: integer, priorityEdgeIds: integer[], startNodeId: integer}
-local _getNextIntersectionBehind = function(edgeId, baseEdge, startNodeId, priorityEdgeIds)
-    logger.print('_getNextIntersectionBehind starting, edgeId_ = ' .. edgeId .. ', startNodeId_ = ' .. startNodeId)
+local _findNextIntersectionBehind = function(edgeId, baseEdge, startNodeId, priorityEdgeIds)
+    logger.print('_findNextIntersectionBehind starting, edgeId_ = ' .. edgeId .. ', startNodeId_ = ' .. startNodeId)
     local nextEdgeIds = funcs.getConnectedEdgeIdsExceptOne(edgeId, startNodeId)
     local nextEdgeIdsCount = #nextEdgeIds
-    table.insert(priorityEdgeIds, edgeId)
 
     -- elseif funcs.isEdgeFrozen_FAST(edgeId) then -- station or depot: do nothing
     --     return { isGoAhead = false, priorityEdgeIds = priorityEdgeIds }
@@ -250,6 +249,8 @@ local _getNextIntersectionBehind = function(edgeId, baseEdge, startNodeId, prior
             priorityEdgeIds = priorityEdgeIds,
         }
     end
+
+    table.insert(priorityEdgeIds, edgeId)
 
     if nextEdgeIdsCount == 0 then -- end of line: stop looking coz no intersections will come up
         return {
@@ -284,12 +285,10 @@ end
 ---@param startNodeId integer
 ---@param priorityEdgeIds integer[]
 ---@return {baseEdge: table, edgeId: integer, isGoAhead: boolean, priorityEdgeIds: integer[], startNodeId: integer}
-local _getPrecedingPriorityEdgeId = function(signalEdgeId, edgeId, baseEdge, startNodeId, priorityEdgeIds)
-    logger.print('_getPrecedingPriorityEdgeId starting, edgeId_ = ' .. edgeId .. ', startNodeId_ = ' .. startNodeId)
+local _findPrecedingPriorityEdgeId = function(signalEdgeId, edgeId, baseEdge, startNodeId, priorityEdgeIds)
+    logger.print('_findPrecedingPriorityEdgeId starting, edgeId_ = ' .. edgeId .. ', startNodeId_ = ' .. startNodeId)
     local nextEdgeIds = funcs.getConnectedEdgeIdsExceptOne(edgeId, startNodeId)
     local nextEdgeIdsCount = #nextEdgeIds
-    if signalEdgeId ~= edgeId then table.insert(priorityEdgeIds, edgeId) end
-
 
     -- elseif funcs.isEdgeFrozen_FAST(edgeId) then -- station or depot: do nothing
     --     return { isGoAhead = false, }
@@ -299,6 +298,8 @@ local _getPrecedingPriorityEdgeId = function(signalEdgeId, edgeId, baseEdge, sta
             priorityEdgeIds = priorityEdgeIds,
         }
     end
+
+    if signalEdgeId ~= edgeId then table.insert(priorityEdgeIds, edgeId) end
 
     if nextEdgeIdsCount == 0 then -- end of line: stop looking coz no intersections will come up
         return {
@@ -332,20 +333,20 @@ funcs.getNextIntersectionBehind = function(signalId)
     local _signalBaseEdge = api.engine.getComponent(_signalEdgeId, api.type.ComponentType.BASE_EDGE)
 
     local startNodeId = _isSignalAgainst and _signalBaseEdge.node0 or _signalBaseEdge.node1
-    local intersectionProps = _getNextIntersectionBehind(_signalEdgeId, _signalBaseEdge, startNodeId, {})
+    local intersectionProps = _findNextIntersectionBehind(_signalEdgeId, _signalBaseEdge, startNodeId, {})
     local count, _maxCount = 1, constants.maxNSegmentsBeforeIntersection
     while intersectionProps.isGoAhead and count < _maxCount do
-        intersectionProps = _getNextIntersectionBehind(intersectionProps.edgeId, intersectionProps.baseEdge, intersectionProps.startNodeId, intersectionProps.priorityEdgeIds)
+        intersectionProps = _findNextIntersectionBehind(intersectionProps.edgeId, intersectionProps.baseEdge, intersectionProps.startNodeId, intersectionProps.priorityEdgeIds)
         count = count + 1
     end
     -- add a couple of segments before the priority light, not farther than the next intersection,
     -- to make the priority computation more aggressive.
     if intersectionProps.isFound and constants.maxNSegmentsBeforePriorityLight > 1 then
         startNodeId = _isSignalAgainst and _signalBaseEdge.node1 or _signalBaseEdge.node0
-        local precedingEdgeProps = _getPrecedingPriorityEdgeId(_signalEdgeId, _signalEdgeId, _signalBaseEdge, startNodeId, intersectionProps.priorityEdgeIds)
+        local precedingEdgeProps = _findPrecedingPriorityEdgeId(_signalEdgeId, _signalEdgeId, _signalBaseEdge, startNodeId, intersectionProps.priorityEdgeIds)
         count, _maxCount = 1, constants.maxNSegmentsBeforePriorityLight
         while precedingEdgeProps.isGoAhead and count < _maxCount do
-            precedingEdgeProps = _getPrecedingPriorityEdgeId(_signalEdgeId, precedingEdgeProps.edgeId, precedingEdgeProps.baseEdge, precedingEdgeProps.startNodeId, precedingEdgeProps.priorityEdgeIds)
+            precedingEdgeProps = _findPrecedingPriorityEdgeId(_signalEdgeId, precedingEdgeProps.edgeId, precedingEdgeProps.baseEdge, precedingEdgeProps.startNodeId, precedingEdgeProps.priorityEdgeIds)
             count = count + 1
         end
     end
