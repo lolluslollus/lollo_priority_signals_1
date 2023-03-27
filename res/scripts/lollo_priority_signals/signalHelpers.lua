@@ -234,7 +234,7 @@ end
 ---@param edgeId integer
 ---@param baseEdge table
 ---@param startNodeId integer
----@param priorityEdgeIds integer[]
+---@param priorityEdgeIds integer[] changes!
 ---@return {baseEdge: table, edgeId: integer, inEdgeId: integer, isFound: boolean, isGoAhead: boolean, isPriorityEdgeDirTowardsIntersection: boolean, nodeId: integer, priorityEdgeIds: integer[], startNodeId: integer}
 local _findNextIntersectionBehind = function(edgeId, baseEdge, startNodeId, priorityEdgeIds)
     logger.print('_findNextIntersectionBehind starting, edgeId_ = ' .. edgeId .. ', startNodeId_ = ' .. startNodeId)
@@ -283,7 +283,7 @@ end
 ---@param edgeId integer
 ---@param baseEdge table
 ---@param startNodeId integer
----@param priorityEdgeIds integer[]
+---@param priorityEdgeIds integer[] changes!
 ---@return {baseEdge: table, edgeId: integer, isGoAhead: boolean, priorityEdgeIds: integer[], startNodeId: integer}
 local _findPrecedingPriorityEdgeId = function(signalEdgeId, edgeId, baseEdge, startNodeId, priorityEdgeIds)
     logger.print('_findPrecedingPriorityEdgeId starting, edgeId_ = ' .. edgeId .. ', startNodeId_ = ' .. startNodeId)
