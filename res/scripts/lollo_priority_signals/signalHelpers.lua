@@ -489,7 +489,7 @@ funcs.getNextLightsOrStations = function(nodeEdgeBeforeIntersection_indexedBy_in
             end
             return { isGoAhead = false }
         elseif funcs.isEdgeFrozenInStationOrDepot_FAST(edgeId) then -- station
-            logger.print('this edge is frozen in a station')
+            logger.print('this edge is frozen in a station or a depot')
             -- check if the intersection is reachable from both ends of the edge, there could be a light blocking it or a cross instead of a switch
             if funcs.getIsPathFromEdgeToNode(edgeId, intersectionNodeId, constants.maxDistanceFromIntersection) then
                 -- _addEdgeGivingWay(edgeId, baseEdge, commonNodeId, prioritySignalIds_indexedBy_inEdgeId)

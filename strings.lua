@@ -5,7 +5,7 @@ function data()
                 [[
 [b]Priority signals for tracks.[/b]
 Place these before an intersection and ordinary signals (or a station) behind. Trains entering the intersection via priority signals will have priority over those entering via ordinary signals (or the station).
-If you want to prioritise a longer stretch of track, place a second priority signal farther away from the intersection (see notes).
+If you want to prioritise a longer stretch of track, place a second priority signal farther ahead of the intersection (see notes).
 
 If you place no ordinary signals on one branch, trains entering the intersection from that branch will not give way. If you place an ordinary signal too close to an intersection, trains passing it will stop abruptly.
 
