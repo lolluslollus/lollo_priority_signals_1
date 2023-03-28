@@ -19,6 +19,7 @@ If you place no ordinary signals on one branch, trains entering the intersection
             ["PrioritySignalsOn"] = "Priority signals ON",
             ["Signal_Desc"] = "Place these before an intersection and ordinary signals (or a station) behind. Trains entering the intersection via priority signals will have priority over those entering via ordinary signals (or the station).",
             ["Signal_Name"] = "Priority Path Signal",
+            ["ThisIsAPrioritySignal"] = "This is a priority signal",
             ["WarningWindowTitle"] = "Warning",
         },
     }
