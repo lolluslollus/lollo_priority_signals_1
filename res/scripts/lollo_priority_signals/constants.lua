@@ -1,7 +1,7 @@
 local constants = {
     refreshGraphPeriodMsec = 5000, -- refresh every 5 seconds
 
-    maxNSegmentsBeforeIntersection = 8, -- seek intersections max N segments ahead of signal
+    maxNSegmentsBeforeIntersection = 16, -- seek intersections max N segments ahead of signal
     maxNSegmentsBeforePriorityLight = 2, -- seek segments max N segments ahead of signal
     maxNSegmentsBehindIntersection = 8, -- seek intersections max N segments ahead of signal
     maxDistanceFromIntersection = 500, -- seek edges max 500 m from intersection
