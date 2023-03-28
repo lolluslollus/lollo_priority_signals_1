@@ -195,7 +195,22 @@ local funcs = {
 
         local conId = api.engine.system.streetConnectorSystem.getConstructionEntityForEdge(edgeId)
         if _isValidAndExistingId(conId) then
-            return #api.engine.getComponent(conId, api.type.ComponentType.CONSTRUCTION).stations > 0
+            local con = api.engine.getComponent(conId, api.type.ComponentType.CONSTRUCTION)
+            if con ~= nil then
+                return #con.stations > 0
+            end
+        end
+        return false
+    end,
+    isEdgeFrozenInStationOrDepot_FAST = function(edgeId)
+        if not(_isValidAndExistingId(edgeId)) then return false end
+
+        local conId = api.engine.system.streetConnectorSystem.getConstructionEntityForEdge(edgeId)
+        if _isValidAndExistingId(conId) then
+            local con = api.engine.getComponent(conId, api.type.ComponentType.CONSTRUCTION)
+            if con ~= nil then
+                return #con.stations > 0 or #con.depots > 0
+            end
         end
         return false
     end,
@@ -473,7 +488,7 @@ funcs.getNextLightsOrStations = function(nodeEdgeBeforeIntersection_indexedBy_in
                 -- edgeIdsGivingWay[edgeId] = intersectionNodeId
             end
             return { isGoAhead = false }
-        elseif funcs.isEdgeFrozenInStation_FAST(edgeId) then -- station
+        elseif funcs.isEdgeFrozenInStationOrDepot_FAST(edgeId) then -- station
             logger.print('this edge is frozen in a station')
             -- check if the intersection is reachable from both ends of the edge, there could be a light blocking it or a cross instead of a switch
             if funcs.getIsPathFromEdgeToNode(edgeId, intersectionNodeId, constants.maxDistanceFromIntersection) then
