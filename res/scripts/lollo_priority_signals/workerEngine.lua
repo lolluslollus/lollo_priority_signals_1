@@ -163,13 +163,9 @@ return {
                         LOLLO NOTE one-way lights are read as two-way lights,
                         and they don't appear in the menu if they have no two-way counterparts, or if those counterparts have expired.
                     ]]
-                    local era_a_signalIds = signalHelpers.getAllEdgeObjectsWithModelId(_signalModelId_EraA)
-                    local era_c_signalIds = signalHelpers.getAllEdgeObjectsWithModelId(_signalModelId_EraC)
-                    logger.print('era_a_signalIds =') logger.debugPrint(era_a_signalIds)
-                    logger.print('era_c_signalIds =') logger.debugPrint(era_c_signalIds)
                     local allPrioritySignalIds = {
-                        table.unpack(era_a_signalIds),
-                        table.unpack(era_c_signalIds)
+                        table.unpack(signalHelpers.getAllEdgeObjectsWithModelId(_signalModelId_EraA)),
+                        table.unpack(signalHelpers.getAllEdgeObjectsWithModelId(_signalModelId_EraC))
                     }
                     logger.print('allPrioritySignalIds =') logger.debugPrint(allPrioritySignalIds)
 
@@ -198,12 +194,8 @@ return {
                                     isPriorityEdgeDirTowardsIntersection = intersectionProps.isPriorityEdgeDirTowardsIntersection,
                                     priorityEdgeIds = intersectionProps.priorityEdgeIds,
                                 }
-                            else
-                                nodeEdgeBeforeIntersection_indexedBy_intersectionNodeId_inEdgeId[intersectionProps.nodeId][intersectionProps.inEdgeId].priorityEdgeIds =
-                                arrayUtils.getUniqueConcatValues(
-                                    nodeEdgeBeforeIntersection_indexedBy_intersectionNodeId_inEdgeId[intersectionProps.nodeId][intersectionProps.inEdgeId].priorityEdgeIds,
-                                    intersectionProps.priorityEdgeIds
-                                )
+                            elseif #intersectionProps.priorityEdgeIds > #nodeEdgeBeforeIntersection_indexedBy_intersectionNodeId_inEdgeId[intersectionProps.nodeId][intersectionProps.inEdgeId].priorityEdgeIds then
+                                nodeEdgeBeforeIntersection_indexedBy_intersectionNodeId_inEdgeId[intersectionProps.nodeId][intersectionProps.inEdgeId].priorityEdgeIds = intersectionProps.priorityEdgeIds
                             end
                         end
                     end
