@@ -1,6 +1,5 @@
 local arrayUtils = require ('lollo_priority_signals.arrayUtils')
 local constants = require('lollo_priority_signals.constants')
-local edgeUtils = require('lollo_priority_signals.edgeUtils')
 local logger = require ('lollo_priority_signals.logger')
 local signalHelpers = require('lollo_priority_signals.signalHelpers')
 local stateHelpers = require('lollo_priority_signals.stateHelpers')
@@ -30,6 +29,7 @@ local _utils = {
                 -- logger.print('vehicleId = ' .. vehicleId .. '; movePath.state = ' .. movePath.state)
                 -- logger.print('movePath =') logger.debugPrint(movePath)
                 -- if the train has not been stopped (I don't know what enum this is, it is not api.type.enum.TransportVehicleState)
+                -- if it is at terminal, the state is 3
                 -- if the user stops a train, its movePath will shorten as the train halts, to only include the edges (or expanded nodes) occupied by the train
                 if isGetStoppedVehicles or movePath.state ~= 2 then
                     for p = movePath.dyn.pathPos.edgeIndex + 1, #movePath.path.edges, 1 do
@@ -76,11 +76,11 @@ local _utils = {
     end,
     replaceEdgeWithSameRemovingObject = function(objectIdToRemove)
         logger.print('_replaceEdgeWithSameRemovingObject starting')
-        if not(edgeUtils.isValidAndExistingId(objectIdToRemove)) then return end
+        if not(signalHelpers.isValidAndExistingId(objectIdToRemove)) then return end
 
         logger.print('_replaceEdgeWithSameRemovingObject found, the edge object id is valid')
         local oldEdgeId = api.engine.system.streetSystem.getEdgeForEdgeObject(objectIdToRemove)
-        if not(edgeUtils.isValidAndExistingId(oldEdgeId)) then return end
+        if not(signalHelpers.isValidAndExistingId(oldEdgeId)) then return end
 
         logger.print('_replaceEdgeWithSameRemovingObject found, the old edge id is valid')
         local oldEdge = api.engine.getComponent(oldEdgeId, api.type.ComponentType.BASE_EDGE)
@@ -100,7 +100,7 @@ local _utils = {
         newEdge.playerOwned = api.engine.getComponent(oldEdgeId, api.type.ComponentType.PLAYER_OWNED)
         newEdge.trackEdge = oldEdgeTrack
 
-        if edgeUtils.isValidId(objectIdToRemove) then
+        if signalHelpers.isValidId(objectIdToRemove) then
             local edgeObjects = {}
             for _, edgeObj in pairs(oldEdge.objects) do
                 if edgeObj[1] ~= objectIdToRemove then
@@ -118,7 +118,7 @@ local _utils = {
         local proposal = api.type.SimpleProposal.new()
         proposal.streetProposal.edgesToRemove[1] = oldEdgeId
         proposal.streetProposal.edgesToAdd[1] = newEdge
-        if edgeUtils.isValidAndExistingId(objectIdToRemove) then
+        if signalHelpers.isValidAndExistingId(objectIdToRemove) then
             proposal.streetProposal.edgeObjectsToRemove[1] = objectIdToRemove
         end
 

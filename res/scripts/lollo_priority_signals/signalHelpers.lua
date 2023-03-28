@@ -1,14 +1,49 @@
 local arrayUtils = require('lollo_priority_signals.arrayUtils')
 local constants = require('lollo_priority_signals.constants')
-local edgeUtils = require('lollo_priority_signals.edgeUtils')
 local logger = require('lollo_priority_signals.logger')
 
+---@param id integer
+---@return boolean
+local _isValidId = function(id)
+    return type(id) == 'number' and id >= 0
+end
+
+---@param id integer
+---@return boolean
+local _isValidAndExistingId = function(id)
+    return type(id) == 'number' and id >= 0 and api.engine.entityExists(id)
+end
+
+---@param edgeObjectIds integer[]
+---@param refModelId integer
+---@return integer[]
+local _getEdgeObjectsIdsWithModelId2 = function(edgeObjectIds, refModelId)
+    local results = {}
+    if type(edgeObjectIds) ~= 'table' or not(_isValidId(refModelId)) then return results end
+
+    for i = 1, #edgeObjectIds do
+        if _isValidAndExistingId(edgeObjectIds[i]) then
+            local modelInstanceList = api.engine.getComponent(edgeObjectIds[i], api.type.ComponentType.MODEL_INSTANCE_LIST)
+            if modelInstanceList ~= nil
+            and modelInstanceList.fatInstances
+            and modelInstanceList.fatInstances[1]
+            and modelInstanceList.fatInstances[1].modelId == refModelId then
+                results[#results+1] = edgeObjectIds[i]
+            end
+        end
+    end
+    return results
+end
+
 local funcs = {
+    isValidId = _isValidId,
+    isValidAndExistingId = _isValidAndExistingId,
+    getEdgeObjectsIdsWithModelId2 = _getEdgeObjectsIdsWithModelId2,
     ---returns table of edgeObjectIds
     ---@param refModelId integer
     ---@return integer[]
     getAllEdgeObjectsWithModelId = function(refModelId)
-        if not(edgeUtils.isValidId(refModelId)) then return {} end
+        if not(_isValidId(refModelId)) then return {} end
 
         local _map = api.engine.system.streetSystem.getEdgeObject2EdgeMap()
         local edgeObjectIds = {}
@@ -16,14 +51,14 @@ local funcs = {
             edgeObjectIds[#edgeObjectIds+1] = edgeObjectId
         end
 
-        return edgeUtils.getEdgeObjectsIdsWithModelId2(edgeObjectIds, refModelId)
+        return _getEdgeObjectsIdsWithModelId2(edgeObjectIds, refModelId)
     end,
     ---@param refEdgeId integer
     ---@param nodeId integer
     ---@return integer[]
     getConnectedEdgeIdsExceptOne = function(refEdgeId, nodeId)
         -- print('getConnectedEdgeIdsExceptOne starting')
-        if not(edgeUtils.isValidAndExistingId(nodeId)) then return {} end
+        if not(_isValidAndExistingId(nodeId)) then return {} end
 
         local _map = api.engine.system.streetSystem.getNode2TrackEdgeMap()
         local results = {}
@@ -31,7 +66,7 @@ local funcs = {
         local connectedEdgeIds_userdata = _map[nodeId] -- userdata
         if connectedEdgeIds_userdata ~= nil then
             for _, edgeId in pairs(connectedEdgeIds_userdata) do -- cannot use connectedEdgeIdsUserdata[index] here
-                if edgeId ~= refEdgeId and edgeUtils.isValidAndExistingId(edgeId) then
+                if edgeId ~= refEdgeId and _isValidAndExistingId(edgeId) then
                     results[#results+1] = edgeId
                 end
             end
@@ -45,7 +80,7 @@ local funcs = {
     ---@return integer[]
     getConnectedEdgeIdsExceptSome = function(refEdgeIds_indexed, nodeId)
         -- print('getConnectedEdgeIdsExceptSome starting')
-        if not(edgeUtils.isValidAndExistingId(nodeId)) then return {} end
+        if not(_isValidAndExistingId(nodeId)) then return {} end
 
         local _map = api.engine.system.streetSystem.getNode2TrackEdgeMap()
         local results = {}
@@ -53,7 +88,7 @@ local funcs = {
         local connectedEdgeIds_userdata = _map[nodeId] -- userdata
         if connectedEdgeIds_userdata ~= nil then
             for _, edgeId in pairs(connectedEdgeIds_userdata) do -- cannot use connectedEdgeIdsUserdata[index] here
-                if not(refEdgeIds_indexed[edgeId]) and edgeUtils.isValidAndExistingId(edgeId) then
+                if not(refEdgeIds_indexed[edgeId]) and _isValidAndExistingId(edgeId) then
                     results[#results+1] = edgeId
                 end
             end
@@ -67,7 +102,7 @@ local funcs = {
     ---@param refModelId integer
     ---@return integer[]
     getObjectIdsInEdge = function(edgeId, refModelId)
-        if not(edgeUtils.isValidId(edgeId)) or not(edgeUtils.isValidId(refModelId)) then return {} end
+        if not(_isValidId(edgeId)) or not(_isValidId(refModelId)) then return {} end
 
         local baseEdge = api.engine.getComponent(edgeId, api.type.ComponentType.BASE_EDGE)
         local baseEdgeTrack = api.engine.getComponent(edgeId, api.type.ComponentType.BASE_EDGE_TRACK)
@@ -79,7 +114,7 @@ local funcs = {
             if object ~= nil and object[1] ~= nil then
                 local objectId = object[1]
                 logger.print('baseEdge objectId =') logger.debugPrint(objectId)
-                if edgeUtils.isValidAndExistingId(objectId) then
+                if _isValidAndExistingId(objectId) then
                     local modelInstanceList = api.engine.getComponent(objectId, api.type.ComponentType.MODEL_INSTANCE_LIST)
                     if modelInstanceList ~= nil
                     and modelInstanceList.fatInstances
@@ -97,7 +132,7 @@ local funcs = {
     ---@param signalId integer
     ---@return boolean
     isSignalOneWay = function(signalId)
-        if not(edgeUtils.isValidId(signalId)) then return false end
+        if not(_isValidId(signalId)) then return false end
 
         local signalList = api.engine.getComponent(signalId, api.type.ComponentType.SIGNAL_LIST)
         if signalList == nil or signalList.signals == nil  or signalList.signals[1] == nil then return false end
@@ -150,10 +185,19 @@ local funcs = {
         return true
     end,
     isEdgeFrozen_FAST = function(edgeId)
-        if not(edgeUtils.isValidAndExistingId(edgeId)) then return false end
+        if not(_isValidAndExistingId(edgeId)) then return false end
 
         local conId = api.engine.system.streetConnectorSystem.getConstructionEntityForEdge(edgeId)
-        return edgeUtils.isValidAndExistingId(conId)
+        return _isValidAndExistingId(conId)
+    end,
+    isEdgeFrozenInStation_FAST = function(edgeId)
+        if not(_isValidAndExistingId(edgeId)) then return false end
+
+        local conId = api.engine.system.streetConnectorSystem.getConstructionEntityForEdge(edgeId)
+        if _isValidAndExistingId(conId) then
+            return #api.engine.getComponent(conId, api.type.ComponentType.CONSTRUCTION).stations > 0
+        end
+        return false
     end,
     ---returns 0 for no one-way signal, 1 for one-way signal along, 2 for one-way signal against
     ---@param signalId integer
@@ -349,9 +393,10 @@ funcs.getNextIntersectionBehind = function(signalId)
         -- if the priority signal follows a station,
         -- check the whole stretch of track in the station.
         -- This way, any train of any length leaving the station will have priority
-        -- LOLLO TODO check if it works
-        -- LOLLO TODO check if the edge is frozen in a station
-        and (count < _maxCount or funcs.isEdgeFrozen_FAST(precedingEdgeProps.edgeId)) do
+        -- This ensures that a priority train gets priority whenever it starts moving out of a station
+        and (count < _maxCount or funcs.isEdgeFrozenInStation_FAST(precedingEdgeProps.edgeId))
+        -- and count < _maxCount
+        do
             -- updating precedingEdgeProps may seem useless at first sight, but it updates intersectionProps.priorityEdgeIds
             precedingEdgeProps = _findPrecedingPriorityEdgeId(_signalEdgeId, precedingEdgeProps.edgeId, precedingEdgeProps.baseEdge, precedingEdgeProps.startNodeId, precedingEdgeProps.priorityEdgeIds)
             count = count + 1
@@ -428,8 +473,8 @@ funcs.getNextLightsOrStations = function(nodeEdgeBeforeIntersection_indexedBy_in
                 -- edgeIdsGivingWay[edgeId] = intersectionNodeId
             end
             return { isGoAhead = false }
-        elseif funcs.isEdgeFrozen_FAST(edgeId) then -- station or depot
-            logger.print('this edge is frozen')
+        elseif funcs.isEdgeFrozenInStation_FAST(edgeId) then -- station
+            logger.print('this edge is frozen in a station')
             -- check if the intersection is reachable from both ends of the edge, there could be a light blocking it or a cross instead of a switch
             if funcs.getIsPathFromEdgeToNode(edgeId, intersectionNodeId, constants.maxDistanceFromIntersection) then
                 -- _addEdgeGivingWay(edgeId, baseEdge, commonNodeId, prioritySignalIds_indexedBy_inEdgeId)
