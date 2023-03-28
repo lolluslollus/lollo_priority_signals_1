@@ -126,7 +126,6 @@ local _hasOpposingOneWaySignals = function(baseEdge, toNodeId)
         local objectId = object[1]
         local oneWaySignalDirection = _getOneWaySignalDirection(objectId)
         if oneWaySignalDirection ~= 0 and oneWaySignalDirection ~= edgeDirection then
-            logger.print('_hasOpposingOneWaySignals about to return true')
             return true
         end
     end
@@ -333,6 +332,7 @@ local _findNextIntersectionBehind = function(edgeId, baseEdge, startNodeId, prio
     -- elseif funcs.isEdgeFrozen_FAST(edgeId) then -- station or depot: do nothing
     --     return { isGoAhead = false, priorityEdgeIds = priorityEdgeIds }
     if _hasOpposingOneWaySignals(baseEdge, startNodeId) then -- baseEdge has opposing one-way signals: stop looking coz no trains will get through
+        logger.print('opposing one-way signals found, leaving')
         return {
             isGoAhead = false,
             priorityEdgeIds = priorityEdgeIds,
@@ -384,6 +384,7 @@ local _findNextIntersectionOrPrioritySignalBehind = function(edgeId, baseEdge, s
     -- elseif funcs.isEdgeFrozen_FAST(edgeId) then -- station or depot: do nothing
     --     return { isGoAhead = false, priorityEdgeIds = priorityEdgeIds }
     if _hasOpposingOneWaySignals(baseEdge, startNodeId) then -- baseEdge has opposing one-way signals: stop looking coz no trains will get through
+        logger.print('opposing one-way signals found, leaving')
         return {
             isGoAhead = false,
             priorityEdgeIds = priorityEdgeIds,
@@ -442,6 +443,7 @@ local _findPrecedingPriorityEdgeId = function(edgeId, baseEdge, startNodeId, pri
     --     return { isGoAhead = false, }
     if not(_hasOpposingOneWaySignals(baseEdge, startNodeId)) then -- baseEdge has opposing one-way signals: stop looking coz no trains will get through
         -- I not() it here coz we are going against the signals here
+        logger.print('opposing one-way signals found, leaving')
         return {
             isGoAhead = false,
             priorityEdgeIds = priorityEdgeIds,
