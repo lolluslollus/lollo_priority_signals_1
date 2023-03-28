@@ -345,11 +345,17 @@ funcs.getNextIntersectionBehind = function(signalId)
         startNodeId = _isSignalAgainst and _signalBaseEdge.node1 or _signalBaseEdge.node0
         local precedingEdgeProps = _findPrecedingPriorityEdgeId(_signalEdgeId, _signalEdgeId, _signalBaseEdge, startNodeId, intersectionProps.priorityEdgeIds)
         count, _maxCount = 1, constants.maxNSegmentsBeforePriorityLight
-        while precedingEdgeProps.isGoAhead and count < _maxCount do
+        while precedingEdgeProps.isGoAhead
+        -- if the priority signal follows a station,
+        -- check the whole stretch of track in the station.
+        -- This way, any train of any length leaving the station will have priority
+        -- LOLLO TODO check if it works
+        -- LOLLO TODO check if the edge is frozen in a station
+        and (count < _maxCount or funcs.isEdgeFrozen_FAST(precedingEdgeProps.edgeId)) do
+            -- updating precedingEdgeProps may seem useless at first sight, but it updates intersectionProps.priorityEdgeIds
             precedingEdgeProps = _findPrecedingPriorityEdgeId(_signalEdgeId, precedingEdgeProps.edgeId, precedingEdgeProps.baseEdge, precedingEdgeProps.startNodeId, precedingEdgeProps.priorityEdgeIds)
             count = count + 1
         end
-        -- updating precedingEdgeProps may seem useless at first sight, but it updates intersectionProps.priorityEdgeIds
     end
 
     logger.print('getNextIntersectionBehind about to return') logger.debugPrint(intersectionProps)
