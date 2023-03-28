@@ -98,6 +98,40 @@ local _isSignalAgainstEdgeDirection = function(signalId)
 
     return false, edgeId
 end
+---returns 0 for no one-way signal, 1 for one-way signal along, 2 for one-way signal against
+---@param signalId integer
+---@return 0|1|2
+local _getOneWaySignalDirection = function(signalId)
+    local signalList = api.engine.getComponent(signalId, api.type.ComponentType.SIGNAL_LIST)
+    local signal = signalList.signals[1]
+    local edgeId = signal.edgePr.entity
+
+    if signal.type == 1 then -- one-way signal
+        local signalAgainst = api.engine.system.signalSystem.getSignal(api.type.EdgeId.new(edgeId, signal.edgePr.index), false)
+        if signalAgainst.entity == signalId then return 2 end
+        return 1
+        -- local signalAlong = api.engine.system.signalSystem.getSignal(api.type.EdgeId.new(edgeId_, signal.edgePr.index), true)
+        -- if signalAlong.entity == edgeObjectId then isSignalAlong = true end
+    end
+
+    return 0
+end
+
+---@param baseEdge table
+---@param toNodeId integer
+---@return boolean
+local _hasOpposingOneWaySignals = function(baseEdge, toNodeId)
+    local edgeDirection = (baseEdge.node1 == toNodeId) and 1 or 2
+    for _, object in pairs(baseEdge.objects) do
+        local objectId = object[1]
+        local oneWaySignalDirection = _getOneWaySignalDirection(objectId)
+        if oneWaySignalDirection ~= 0 and oneWaySignalDirection ~= edgeDirection then
+            logger.print('_hasOpposingOneWaySignals about to return true')
+            return true
+        end
+    end
+    return false
+end
 
 
 local funcs = {
@@ -248,24 +282,7 @@ local funcs = {
         end
         return false
     end,
-    ---returns 0 for no one-way signal, 1 for one-way signal along, 2 for one-way signal against
-    ---@param signalId integer
-    ---@return 0|1|2
-    getOneWaySignalDirection = function(signalId)
-        local signalList = api.engine.getComponent(signalId, api.type.ComponentType.SIGNAL_LIST)
-        local signal = signalList.signals[1]
-        local edgeId = signal.edgePr.entity
 
-        if signal.type == 1 then -- one-way signal
-            local signalAgainst = api.engine.system.signalSystem.getSignal(api.type.EdgeId.new(edgeId, signal.edgePr.index), false)
-            if signalAgainst.entity == signalId then return 2 end
-            return 1
-            -- local signalAlong = api.engine.system.signalSystem.getSignal(api.type.EdgeId.new(edgeId_, signal.edgePr.index), true)
-            -- if signalAlong.entity == edgeObjectId then isSignalAlong = true end
-        end
-
-        return 0
-    end,
     ---comment
     ---@param baseEdge integer
     ---@return integer[]
@@ -288,46 +305,18 @@ local funcs = {
 }
 
 ---@param baseEdge table
----@return boolean
-local _hasOpposingOneWaySignals = function(baseEdge)
-    local lastSignalDirection = 0
+---@param signalIds_indexed table<integer, any>
+---@return integer|false
+local _tryGetAnyOfTheGivenSignals = function(baseEdge, signalIds_indexed)
     for _, object in pairs(baseEdge.objects) do
-        local objectId = object[1]
-        local oneWaySignalDirection = funcs.getOneWaySignalDirection(objectId)
-        if oneWaySignalDirection ~= 0 then
-            if lastSignalDirection == 0 then
-                lastSignalDirection = oneWaySignalDirection
+        if object ~= nil and object[1] ~= nil then
+            if signalIds_indexed[object[1]] ~= nil then
+                logger.print('_tryGetAnyOfTheGivenSignals about to return ' .. object[1])
+                return object[1]
             end
-            if lastSignalDirection ~= oneWaySignalDirection then return true end
         end
     end
 
-    return false
-end
-
----@param baseEdge table
----@param toNodeId integer
----@return boolean
-local _hasOpposingOneWaySignalsNEW = function(baseEdge, toNodeId)
-    local edgeDirection = (baseEdge.node1 == toNodeId) and 1 or 2
-    for _, object in pairs(baseEdge.objects) do
-        local objectId = object[1]
-        local oneWaySignalDirection = funcs.getOneWaySignalDirection(objectId)
-        if oneWaySignalDirection ~= 0 and oneWaySignalDirection ~= edgeDirection then
-            logger.print('_hasOpposingOneWaySignals about to return true')
-            return true
-        end
-    end
-    return false
-end
-
----@param baseEdge table
----@param refModelIds integer[]
----@return boolean
-local _hasPrioritySignals = function(baseEdge, refModelIds)
-    for _, refModelId in pairs(refModelIds) do
-        if #_getObjectIdsInBaseEdge(baseEdge, refModelId) > 0 then return true end
-    end
     return false
 end
 
@@ -381,13 +370,13 @@ end
 
 -- LOLLO TODO this is new: stop the search at the first intersection or at the first priority signal, whichever comes first.
 -- Searches based on other signals will pick it up from there, and I will concatenate the results.
----@param refModelIds integer[]
 ---@param edgeId integer
 ---@param baseEdge table
 ---@param startNodeId integer
 ---@param priorityEdgeIds integer[] changes!
+---@param edgeIdsWithPrioritySignals_indexedBy_signalId table<integer, integer> --signalId, edgeId
 ---@return {baseEdge: table, edgeId: integer, inEdgeId: integer, isFound: boolean, isGoAhead: boolean, isPriorityEdgeDirTowardsIntersection: boolean, nodeId: integer, priorityEdgeIds: integer[], startNodeId: integer}
-local _findNextIntersectionOrPrioritySignalBehind = function(refModelIds, edgeId, baseEdge, startNodeId, priorityEdgeIds)
+local _findNextIntersectionOrPrioritySignalBehind = function(edgeId, baseEdge, startNodeId, priorityEdgeIds, edgeIdsWithPrioritySignals_indexedBy_signalId)
     logger.print('_findNextIntersectionOrPrioritySignalBehind starting, edgeId_ = ' .. edgeId .. ', startNodeId_ = ' .. startNodeId)
     local nextEdgeIds = funcs.getConnectedEdgeIdsExceptOne(edgeId, startNodeId)
     local nextEdgeIdsCount = #nextEdgeIds
@@ -399,15 +388,14 @@ local _findNextIntersectionOrPrioritySignalBehind = function(refModelIds, edgeId
             isGoAhead = false,
             priorityEdgeIds = priorityEdgeIds,
         }
-    -- LOLLO TODO here, I must check if the signal is a priority signal,
-    -- if it is oriented toward startNodeId
-    elseif _hasPrioritySignals(baseEdge, refModelIds) then
+    end
+    local prioritySignalIdOnEdge = _tryGetAnyOfTheGivenSignals(baseEdge, edgeIdsWithPrioritySignals_indexedBy_signalId)
+    if prioritySignalIdOnEdge then
         return {
             isFound = true,
             isGoAhead = false,
-            -- isPriorityEdgeDirTowardsIntersection = startNodeId == baseEdge.node1,
             priorityEdgeIds = priorityEdgeIds,
-            -- prioritySignalId = 
+            prioritySignalId = prioritySignalIdOnEdge,
         }
     end
 
@@ -452,7 +440,8 @@ local _findPrecedingPriorityEdgeId = function(edgeId, baseEdge, startNodeId, pri
 
     -- elseif funcs.isEdgeFrozen_FAST(edgeId) then -- station or depot: do nothing
     --     return { isGoAhead = false, }
-    if _hasOpposingOneWaySignals(baseEdge, startNodeId) then -- baseEdge has opposing one-way signals: stop looking coz no trains will get through
+    if not(_hasOpposingOneWaySignals(baseEdge, startNodeId)) then -- baseEdge has opposing one-way signals: stop looking coz no trains will get through
+        -- I not() it here coz we are going against the signals here
         return {
             isGoAhead = false,
             priorityEdgeIds = priorityEdgeIds,
@@ -484,8 +473,9 @@ local _findPrecedingPriorityEdgeId = function(edgeId, baseEdge, startNodeId, pri
     end
 end
 ---@param signalId integer
+---@param edgeIdsWithPrioritySignals_indexedBy_signalId table<integer, integer> --signalId, edgeId
 ---@return {baseEdge: any, edgeId: integer, inEdgeId: integer, isFound: boolean, isGoAhead: boolean, isPriorityEdgeDirTowardsIntersection: boolean, nodeId: integer, priorityEdgeIds: integer[], startNodeId: integer}
-funcs.getNextIntersectionBehind = function(signalId)
+funcs.getNextIntersectionBehind = function(signalId, edgeIdsWithPrioritySignals_indexedBy_signalId)
     logger.print('getNextIntersection starting, signalId = ' .. signalId)
 
     local _isSignalAgainst, _signalEdgeId = funcs.isSignalAgainstEdgeDirection(signalId)

@@ -179,7 +179,7 @@ return {
                     nodeEdgeBeforeIntersection_indexedBy_intersectionNodeId_inEdgeId = {}
                     for _, signalId in pairs(allPrioritySignalIds) do
                         edgeIdsWithPrioritySignals_indexedBy_signalId[signalId] = _edgeObject2EdgeMap[signalId]
-                        local intersectionProps = signalHelpers.getNextIntersectionBehind(signalId)
+                        local intersectionProps = signalHelpers.getNextIntersectionBehind(signalId, edgeIdsWithPrioritySignals_indexedBy_signalId)
                         -- logger.print('signal ' .. signalId .. ' has intersectionProps =') logger.debugPrint(intersectionProps)
                         if intersectionProps.isFound then
                             if not(nodeEdgeBeforeIntersection_indexedBy_intersectionNodeId_inEdgeId[intersectionProps.nodeId]) then
