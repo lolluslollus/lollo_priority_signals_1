@@ -93,7 +93,7 @@ return {
             local window = api.gui.util.getById(windowId)
             if not(window) then return end
 
-            local newItemId = 'thisIsAPrioritySignal'
+            local newItemId = 'thisIsAPrioritySignal_' .. selectedPrioritySignalIds[1]
             if api.gui.util.getById(newItemId) ~= nil then return end
 
             local windowLayout = window:getLayout()
