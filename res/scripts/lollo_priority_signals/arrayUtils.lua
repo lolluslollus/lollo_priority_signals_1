@@ -201,6 +201,24 @@ arrayUtils.getCount = function(tab, isDiscardNil)
 end
 
 ---@param tab table|any[]
+---@param isIgnoreNil? boolean
+---@return boolean
+arrayUtils.tableHasValues = function(tab, isIgnoreNil)
+    if type(tab) ~= 'table' and type(tab) ~= 'userdata' then
+        return false
+    end
+
+    local result = 0
+    for _, value in pairs(tab) do
+        if not(isIgnoreNil) or value ~= nil then
+            return true
+        end
+    end
+
+    return false
+end
+
+---@param tab table|any[]
 ---@param fieldName? string
 ---@param fieldValueNonNil any
 ---@return integer

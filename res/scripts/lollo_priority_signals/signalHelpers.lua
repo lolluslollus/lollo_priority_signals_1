@@ -132,6 +132,20 @@ local _hasOpposingOneWaySignals = function(baseEdge, toNodeId)
     return false
 end
 
+---@param baseEdge table
+---@param toNodeId integer
+---@return boolean
+local _hasOneWaySignalsAlong = function(baseEdge, toNodeId)
+    local edgeDirection = (baseEdge.node1 == toNodeId) and 2 or 1
+    for _, object in pairs(baseEdge.objects) do
+        local objectId = object[1]
+        local oneWaySignalDirection = _getOneWaySignalDirection(objectId)
+        if oneWaySignalDirection ~= 0 and oneWaySignalDirection ~= edgeDirection then
+            return true
+        end
+    end
+    return false
+end
 
 local funcs = {
     isValidId = _isValidId,
@@ -323,7 +337,7 @@ end
 ---@param baseEdge table
 ---@param startNodeId integer
 ---@param priorityEdgeIds integer[] changes!
----@return {baseEdge: table, edgeId: integer, inEdgeId: integer, isFound: boolean, isGoAhead: boolean, isPriorityEdgeDirTowardsIntersection: boolean, nodeId: integer, priorityEdgeIds: integer[], startNodeId: integer}
+---@return {baseEdge: table, edgeId: integer, inEdgeId: integer, isIntersectionFound: boolean, isGoAhead: boolean, isPriorityEdgeDirTowardsIntersection: boolean, nodeId: integer, priorityEdgeIds: integer[], startNodeId: integer}
 local _findNextIntersectionBehind = function(edgeId, baseEdge, startNodeId, priorityEdgeIds)
     logger.print('_findNextIntersectionBehind starting, edgeId_ = ' .. edgeId .. ', startNodeId_ = ' .. startNodeId)
     local nextEdgeIds = funcs.getConnectedEdgeIdsExceptOne(edgeId, startNodeId)
@@ -359,7 +373,7 @@ local _findNextIntersectionBehind = function(edgeId, baseEdge, startNodeId, prio
     else -- startNodeId is an intersection
         return {
             inEdgeId = edgeId,
-            isFound = true,
+            isIntersectionFound = true,
             isGoAhead = false,
             isPriorityEdgeDirTowardsIntersection = startNodeId == baseEdge.node1,
             priorityEdgeIds = priorityEdgeIds,
@@ -368,15 +382,29 @@ local _findNextIntersectionBehind = function(edgeId, baseEdge, startNodeId, prio
     end
 end
 
+---@class intersectionOrPrioritySignalProps
+---@field baseEdge table, 
+---@field edgeId integer, 
+---@field inEdgeId integer, 
+---@field isIntersectionFound boolean,
+---@field isGoAhead boolean,
+---@field isPriorityEdgeDirTowardsIntersection boolean,
+---@field isPrioritySignalFound boolean,
+---@field nodeId integer,
+---@field priorityEdgeIds integer[],
+---@field innerSignalId integer,
+---@field startNodeId integer
+
 -- LOLLO TODO this is new: stop the search at the first intersection or at the first priority signal, whichever comes first.
 -- Searches based on other signals will pick it up from there, and I will concatenate the results.
+---@param startSignalId integer
 ---@param edgeId integer
 ---@param baseEdge table
 ---@param startNodeId integer
 ---@param priorityEdgeIds integer[] changes!
----@param edgeIdsWithPrioritySignals_indexedBy_signalId table<integer, integer> --signalId, edgeId
----@return {baseEdge: table, edgeId: integer, inEdgeId: integer, isFound: boolean, isGoAhead: boolean, isPriorityEdgeDirTowardsIntersection: boolean, nodeId: integer, priorityEdgeIds: integer[], startNodeId: integer}
-local _findNextIntersectionOrPrioritySignalBehind = function(edgeId, baseEdge, startNodeId, priorityEdgeIds, edgeIdsWithPrioritySignals_indexedBy_signalId)
+---@param prioritySignalIds_indexed table<integer, boolean> --signalId, true
+---@return intersectionOrPrioritySignalProps
+local _findNextIntersectionOrPrioritySignalBehind = function(startSignalId, edgeId, baseEdge, startNodeId, priorityEdgeIds, prioritySignalIds_indexed)
     logger.print('_findNextIntersectionOrPrioritySignalBehind starting, edgeId_ = ' .. edgeId .. ', startNodeId_ = ' .. startNodeId)
     local nextEdgeIds = funcs.getConnectedEdgeIdsExceptOne(edgeId, startNodeId)
     local nextEdgeIdsCount = #nextEdgeIds
@@ -390,13 +418,14 @@ local _findNextIntersectionOrPrioritySignalBehind = function(edgeId, baseEdge, s
             priorityEdgeIds = priorityEdgeIds,
         }
     end
-    local prioritySignalIdOnEdge = _tryGetAnyOfTheGivenSignals(baseEdge, edgeIdsWithPrioritySignals_indexedBy_signalId)
-    if prioritySignalIdOnEdge then
+    local prioritySignalIdOnEdge = _tryGetAnyOfTheGivenSignals(baseEdge, prioritySignalIds_indexed)
+    if prioritySignalIdOnEdge and prioritySignalIdOnEdge ~= startSignalId then
+        logger.print('prioritySignalIdOnEdge is ' .. tostring(prioritySignalIdOnEdge))
         return {
-            isFound = true,
+            isPrioritySignalFound = true,
             isGoAhead = false,
             priorityEdgeIds = priorityEdgeIds,
-            prioritySignalId = prioritySignalIdOnEdge,
+            innerSignalId = prioritySignalIdOnEdge,
         }
     end
 
@@ -420,7 +449,7 @@ local _findNextIntersectionOrPrioritySignalBehind = function(edgeId, baseEdge, s
     else -- startNodeId is an intersection
         return {
             inEdgeId = edgeId,
-            isFound = true,
+            isIntersectionFound = true,
             isGoAhead = false,
             isPriorityEdgeDirTowardsIntersection = startNodeId == baseEdge.node1,
             priorityEdgeIds = priorityEdgeIds,
@@ -441,8 +470,9 @@ local _findPrecedingPriorityEdgeId = function(edgeId, baseEdge, startNodeId, pri
 
     -- elseif funcs.isEdgeFrozen_FAST(edgeId) then -- station or depot: do nothing
     --     return { isGoAhead = false, }
-    if not(_hasOpposingOneWaySignals(baseEdge, startNodeId)) then -- baseEdge has opposing one-way signals: stop looking coz no trains will get through
+    if _hasOneWaySignalsAlong(baseEdge, startNodeId) then -- baseEdge has opposing one-way signals: stop looking coz no trains will get through
         -- I not() it here coz we are going against the signals here
+        -- LOLLO TODO fixed this, check it
         logger.print('opposing one-way signals found, leaving')
         return {
             isGoAhead = false,
@@ -475,9 +505,9 @@ local _findPrecedingPriorityEdgeId = function(edgeId, baseEdge, startNodeId, pri
     end
 end
 ---@param signalId integer
----@param edgeIdsWithPrioritySignals_indexedBy_signalId table<integer, integer> --signalId, edgeId
----@return {baseEdge: any, edgeId: integer, inEdgeId: integer, isFound: boolean, isGoAhead: boolean, isPriorityEdgeDirTowardsIntersection: boolean, nodeId: integer, priorityEdgeIds: integer[], startNodeId: integer}
-funcs.getNextIntersectionBehind = function(signalId, edgeIdsWithPrioritySignals_indexedBy_signalId)
+---@param prioritySignalIds_indexed table<integer, boolean> --signalId, true
+---@return intersectionOrPrioritySignalProps
+funcs.getNextIntersectionBehind = function(signalId, prioritySignalIds_indexed)
     logger.print('getNextIntersection starting, signalId = ' .. signalId)
 
     local _isSignalAgainst, _signalEdgeId = funcs.isSignalAgainstEdgeDirection(signalId)
@@ -485,16 +515,18 @@ funcs.getNextIntersectionBehind = function(signalId, edgeIdsWithPrioritySignals_
     local _signalBaseEdge = api.engine.getComponent(_signalEdgeId, api.type.ComponentType.BASE_EDGE)
 
     local startNodeId = _isSignalAgainst and _signalBaseEdge.node0 or _signalBaseEdge.node1
-    local intersectionProps = _findNextIntersectionBehind(_signalEdgeId, _signalBaseEdge, startNodeId, {})
+    -- local intersectionProps = _findNextIntersectionBehind(_signalEdgeId, _signalBaseEdge, startNodeId, {})
+    local intersectionProps = _findNextIntersectionOrPrioritySignalBehind(signalId, _signalEdgeId, _signalBaseEdge, startNodeId, {}, prioritySignalIds_indexed)
     local count, _maxCount = 1, constants.maxNSegmentsBeforeIntersection
     while intersectionProps.isGoAhead and count <= _maxCount do
-        intersectionProps = _findNextIntersectionBehind(intersectionProps.edgeId, intersectionProps.baseEdge, intersectionProps.startNodeId, intersectionProps.priorityEdgeIds)
+        -- intersectionProps = _findNextIntersectionBehind(intersectionProps.edgeId, intersectionProps.baseEdge, intersectionProps.startNodeId, intersectionProps.priorityEdgeIds)
+        intersectionProps = _findNextIntersectionOrPrioritySignalBehind(signalId, intersectionProps.edgeId, intersectionProps.baseEdge, intersectionProps.startNodeId, intersectionProps.priorityEdgeIds, prioritySignalIds_indexed)
         count = count + 1
     end
     -- if the priority signal follows a station, check the whole stretch of track in the station.
     -- This way, any train of any length leaving the station will have priority.
     -- This ensures that a priority train gets priority as soon as it starts moving out of a station.
-    if intersectionProps.isFound and constants.maxNSegmentsBeforePriorityLight > 1 then
+    if (intersectionProps.isIntersectionFound or intersectionProps.isPrioritySignalFound) and constants.maxNSegmentsBeforePriorityLight > 1 then
         startNodeId = _isSignalAgainst and _signalBaseEdge.node1 or _signalBaseEdge.node0
         local precedingEdgeProps = _findPrecedingPriorityEdgeId(_signalEdgeId, _signalBaseEdge, startNodeId, {})
         count, _maxCount = 1, constants.maxNSegmentsBeforePriorityLight
@@ -516,9 +548,9 @@ funcs.getNextIntersectionBehind = function(signalId, edgeIdsWithPrioritySignals_
 end
 ---comment
 ---@param nodeEdgeBeforeIntersection_indexedBy_intersectionNodeId_inEdgeId table<integer, table<integer, integer[]>>
----@param prioritySignals_indexed table<integer, integer>
+---@param prioritySignalIds_indexed table<integer, boolean>
 ---@return table<integer, table<integer, {isGiveWayEdgeDirTowardsIntersection: boolean, nodeIdTowardsIntersection: integer}>> -- intersection node id, edgeId that gives way, its direction, nodeId towards intersection
-funcs.getNextLightsOrStations = function(nodeEdgeBeforeIntersection_indexedBy_intersectionNodeId_inEdgeId, prioritySignals_indexed)
+funcs.getNextLightsOrStations = function(nodeEdgeBeforeIntersection_indexedBy_intersectionNodeId_inEdgeId, prioritySignalIds_indexed)
     -- local edgeIdsGivingWay = {} -- this is only for testing
     -- local nodeEdgeTowardsIntersection_indexedBy_prioritySignalId_edgeIdGivingWay = {}
     local nodeEdgeBehindIntersection_indexedBy_intersectionNodeId_inEdgeId = {}
@@ -571,7 +603,7 @@ funcs.getNextLightsOrStations = function(nodeEdgeBeforeIntersection_indexedBy_in
             -- get out if there is a priority signal on this edge, you don't want to compete.
             -- If there are more signals on the same edge, tough, get out anyway.
             for _, lightId in pairs(lightIdsInEdge) do
-                if prioritySignals_indexed[lightId] ~= nil then return { isGoAhead = false } end
+                if prioritySignalIds_indexed[lightId] then return { isGoAhead = false } end
             end
             -- check if the intersection is reachable from both ends of the edge, there could be a light blocking it or a cross instead of a switch
             -- You might check this before checking the lights, and leave if isPath is false LOLLO TODO check if it is faster that way

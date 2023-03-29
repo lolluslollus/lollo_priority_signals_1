@@ -169,40 +169,76 @@ return {
                     }
                     logger.print('allPrioritySignalIds =') logger.debugPrint(allPrioritySignalIds)
 
-                    ---@type table<integer, integer> --signalId, edgeId
-                    local edgeIdsWithPrioritySignals_indexedBy_signalId = {}
+                    ---@type table<integer, boolean> --signalId, true
+                    local prioritySignalIds_indexed = {}
+                    for _, signalId in pairs(allPrioritySignalIds) do
+                        prioritySignalIds_indexed[signalId] = true -- _edgeObject2EdgeMap[signalId]
+                    end
+                    logger.print('prioritySignalIds_indexed =') logger.debugPrint(prioritySignalIds_indexed)
                     -- By construction, I cannot have more than one priority signal on any edge.
                     -- However, different priority signals might share the same intersection node,
                     -- so I have a table of tables.
                     -- nodeId, inEdgeId, props
-                    ---@type table<integer, table<integer, {isPriorityEdgeDirTowardsIntersection: boolean, priorityEdgeIds: integer[]}>>
+                    ---@type table<integer, table<integer, {isPriorityEdgeDirTowardsIntersection: boolean, priorityEdgeIds: integer[], outerSignalId: integer}>>
                     nodeEdgeBeforeIntersection_indexedBy_intersectionNodeId_inEdgeId = {}
-                    for _, signalId in pairs(allPrioritySignalIds) do
-                        edgeIdsWithPrioritySignals_indexedBy_signalId[signalId] = _edgeObject2EdgeMap[signalId]
-                        local intersectionProps = signalHelpers.getNextIntersectionBehind(signalId, edgeIdsWithPrioritySignals_indexedBy_signalId)
+
+                    local chains_indexedBy_innerSignalId = {}
+                    for signalId, _ in pairs(prioritySignalIds_indexed) do
+                        local intersectionProps = signalHelpers.getNextIntersectionBehind(signalId, prioritySignalIds_indexed)
                         -- logger.print('signal ' .. signalId .. ' has intersectionProps =') logger.debugPrint(intersectionProps)
-                        if intersectionProps.isFound then
+                        if intersectionProps.isIntersectionFound then
                             if not(nodeEdgeBeforeIntersection_indexedBy_intersectionNodeId_inEdgeId[intersectionProps.nodeId]) then
                                 nodeEdgeBeforeIntersection_indexedBy_intersectionNodeId_inEdgeId[intersectionProps.nodeId] =
                                 {[intersectionProps.inEdgeId] = {
                                     isPriorityEdgeDirTowardsIntersection = intersectionProps.isPriorityEdgeDirTowardsIntersection,
                                     priorityEdgeIds = intersectionProps.priorityEdgeIds,
+                                    outerSignalId = signalId,
                                 }}
                             elseif not(nodeEdgeBeforeIntersection_indexedBy_intersectionNodeId_inEdgeId[intersectionProps.nodeId][intersectionProps.inEdgeId]) then
                                 nodeEdgeBeforeIntersection_indexedBy_intersectionNodeId_inEdgeId[intersectionProps.nodeId][intersectionProps.inEdgeId] =
                                 {
                                     isPriorityEdgeDirTowardsIntersection = intersectionProps.isPriorityEdgeDirTowardsIntersection,
                                     priorityEdgeIds = intersectionProps.priorityEdgeIds,
+                                    outerSignalId = signalId,
                                 }
                             elseif #intersectionProps.priorityEdgeIds > #nodeEdgeBeforeIntersection_indexedBy_intersectionNodeId_inEdgeId[intersectionProps.nodeId][intersectionProps.inEdgeId].priorityEdgeIds then
+                                logger.warn('this should never happen: got two sets of intersectionProps, the second has nodeId = ' .. intersectionProps.nodeId .. ' and inEdgeId = ' .. intersectionProps.inEdgeId)
                                 nodeEdgeBeforeIntersection_indexedBy_intersectionNodeId_inEdgeId[intersectionProps.nodeId][intersectionProps.inEdgeId].priorityEdgeIds = intersectionProps.priorityEdgeIds
+                            end
+                        -- these stretches of track are chained to others, which are closer to the intersection
+                        elseif intersectionProps.isPrioritySignalFound then
+                            if not(chains_indexedBy_innerSignalId[intersectionProps.innerSignalId]) then
+                                chains_indexedBy_innerSignalId[intersectionProps.innerSignalId] = {
+                                    outerSignalId = signalId,
+                                    priorityEdgeIds = intersectionProps.priorityEdgeIds,
+                                }
+                            else
+                                logger.warn('this should never happen: got two sets of intersectionProps indexed by the same signalId = ' .. intersectionProps.innerSignalId)
+                                arrayUtils.concatValues(chains_indexedBy_innerSignalId[intersectionProps.innerSignalId].priorityEdgeIds, intersectionProps.priorityEdgeIds)
                             end
                         end
                     end
-                    logger.print('nodeEdgeBeforeIntersection_indexedBy_intersectionNodeId_inEdgeId =') logger.debugPrint(nodeEdgeBeforeIntersection_indexedBy_intersectionNodeId_inEdgeId)
-                    logger.print('edgeIdsWithPrioritySignals_indexedBy_signalId =') logger.debugPrint(edgeIdsWithPrioritySignals_indexedBy_signalId)
+                    logger.print('before attaching the chains, nodeEdgeBeforeIntersection_indexedBy_intersectionNodeId_inEdgeId =') logger.debugPrint(nodeEdgeBeforeIntersection_indexedBy_intersectionNodeId_inEdgeId)
+                    logger.print('chains_indexedBy_innerSignalId starts as') logger.debugPrint(chains_indexedBy_innerSignalId)
+                    local count = 0
+                    while count < constants.maxNChainedPrioritySignalsBeforeIntersection and arrayUtils.tableHasValues(chains_indexedBy_innerSignalId, true) do
+                        for intersectionNodeId, nodeEdgeBeforeIntersection_indexedBy_inEdgeId in pairs(nodeEdgeBeforeIntersection_indexedBy_intersectionNodeId_inEdgeId) do
+                            for inEdgeId, nodeEdgeBeforeIntersection in pairs(nodeEdgeBeforeIntersection_indexedBy_inEdgeId) do
+                                local chainsIndex = nodeEdgeBeforeIntersection.outerSignalId -- write it down coz it gets overwritten in the following
+                                local chainedProps = chains_indexedBy_innerSignalId[chainsIndex]
+                                if chainedProps ~= nil then
+                                    arrayUtils.concatValues(nodeEdgeBeforeIntersection_indexedBy_intersectionNodeId_inEdgeId[intersectionNodeId][inEdgeId].priorityEdgeIds, chainedProps.priorityEdgeIds)
+                                    nodeEdgeBeforeIntersection_indexedBy_intersectionNodeId_inEdgeId[intersectionNodeId][inEdgeId].outerSignalId = chainedProps.outerSignalId
+                                    chains_indexedBy_innerSignalId[chainsIndex] = nil
+                                end
+                            end
+                        end
+                        count = count + 1
+                        logger.print('count = ' .. count .. ', chains_indexedBy_innerSignalId is now') logger.debugPrint(chains_indexedBy_innerSignalId)
+                    end
+                    logger.print('after attaching the chains, nodeEdgeBeforeIntersection_indexedBy_intersectionNodeId_inEdgeId =') logger.debugPrint(nodeEdgeBeforeIntersection_indexedBy_intersectionNodeId_inEdgeId)
 
-                    nodeEdgeBehindIntersection_indexedBy_intersectionNodeId_inEdgeId = signalHelpers.getNextLightsOrStations(nodeEdgeBeforeIntersection_indexedBy_intersectionNodeId_inEdgeId, edgeIdsWithPrioritySignals_indexedBy_signalId)
+                    nodeEdgeBehindIntersection_indexedBy_intersectionNodeId_inEdgeId = signalHelpers.getNextLightsOrStations(nodeEdgeBeforeIntersection_indexedBy_intersectionNodeId_inEdgeId, prioritySignalIds_indexed)
                     logger.print('nodeEdgeBehindIntersection_indexedBy_intersectionNodeId_inEdgeId =') logger.debugPrint(nodeEdgeBehindIntersection_indexedBy_intersectionNodeId_inEdgeId)
 
                     if logger.isExtendedLog() then
