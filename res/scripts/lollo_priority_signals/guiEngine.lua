@@ -51,7 +51,8 @@ return {
                         args.proposal.proposal.edgeObjectsToAdd[1].resultEntity,
                         args.proposal.proposal.edgeObjectsToAdd[1].segmentEntity,
                         args.proposal.proposal.addedSegments[1].trackEdge.trackType
-                    logger.print('signalId =') logger.debugPrint(signalId)
+                    logger.print('streetTerminalBuilder - signalId =') logger.debugPrint(signalId)
+                    logger.print('streetTerminalBuilder - edgeId =') logger.debugPrint(edgeId)
                     -- automatically destroy two-way priority signals as soon as they are built
                     -- if not(signalHelpers.isSignalOneWay(signalId)) then
                     --     _sendScriptEvent(constants.events.removeSignal, {objectId = signalId})
@@ -62,7 +63,7 @@ return {
                             table.unpack(signalHelpers.getObjectIdsInEdge(edgeId, _signalModelId_EraA)),
                             table.unpack(signalHelpers.getObjectIdsInEdge(edgeId, _signalModelId_EraC))
                         }
-                        logger.print('prioritySignalIdsInEdge =') logger.debugPrint(prioritySignalIdsInEdge)
+                        logger.print('streetTerminalBuilder - prioritySignalIdsInEdge =') logger.debugPrint(prioritySignalIdsInEdge)
                         if #prioritySignalIdsInEdge > 1 then
                             local objectIdToBeRemoved
                             for _, objectId in pairs(prioritySignalIdsInEdge) do
@@ -97,7 +98,9 @@ return {
             if api.gui.util.getById(newItemId) ~= nil then return end
 
             local windowLayout = window:getLayout()
-            local newItem = api.gui.comp.TextView.new(_texts.thisIsAPrioritySignal)
+            local newItem = api.gui.layout.BoxLayout.new('HORIZONTAL')
+            newItem:addItem(api.gui.comp.TextView.new(_texts.thisIsAPrioritySignal))
+            newItem:addItem(api.gui.comp.ImageView.new('ui/lollo_priority_signals/priority_signal.tga'))
             newItem:setId(newItemId)
             windowLayout:addItem(newItem)
         -- else

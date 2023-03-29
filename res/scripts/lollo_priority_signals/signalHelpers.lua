@@ -323,10 +323,9 @@ local funcs = {
 local _tryGetAnyOfTheGivenSignals = function(baseEdge, signalIds_indexed)
     for _, object in pairs(baseEdge.objects) do
         if object ~= nil and object[1] ~= nil then
-            -- LOLLO TODO I replaced this, it should be better, check it
-            -- if signalIds_indexed[object[1]] ~= nil then
-            if signalIds_indexed[object[1]] then
-                -- logger.print('_tryGetAnyOfTheGivenSignals about to return ' .. object[1])
+            logger.print('_tryGetAnyOfTheGivenSignals got ' .. tostring(signalIds_indexed[object[1]]))
+            if signalIds_indexed[object[1]] then -- can be true or nil
+                logger.print('_tryGetAnyOfTheGivenSignals about to return ' .. object[1])
                 return object[1]
             end
         end
@@ -397,7 +396,7 @@ end
 ---@field innerSignalId integer,
 ---@field startNodeId integer
 
--- LOLLO TODO this is new: stop the search at the first intersection or at the first priority signal, whichever comes first.
+-- Stop the search at the first intersection or at the first priority signal, whichever comes first.
 -- Searches based on other signals will pick it up from there, and I will concatenate the results.
 ---@param startSignalId integer
 ---@param edgeId integer
@@ -422,7 +421,7 @@ local _findNextIntersectionOrPrioritySignalBehind = function(startSignalId, edge
     end
     local prioritySignalIdOnEdge = _tryGetAnyOfTheGivenSignals(baseEdge, prioritySignalIds_indexed)
     if prioritySignalIdOnEdge and prioritySignalIdOnEdge ~= startSignalId then
-        -- logger.print('prioritySignalIdOnEdge is ' .. tostring(prioritySignalIdOnEdge))
+        logger.print('prioritySignalIdOnEdge is ' .. tostring(prioritySignalIdOnEdge) .. ', it is not the start signal id, leaving')
         return {
             isPrioritySignalFound = true,
             isGoAhead = false,
@@ -572,12 +571,10 @@ funcs.getNextLightsOrStations = function(nodeEdgeBeforeIntersection_indexedBy_in
     end
     local _getNext4 = function(edgeId, commonNodeId, intersectionNodeId, count, nodeEdgeBeforeIntersection_indexedBy_inEdgeId)
         logger.print('_getNext4 starting, edgeId = ' .. edgeId .. ', commonNodeId = ' .. commonNodeId)
-        if nodeEdgeBeforeIntersection_indexedBy_inEdgeId[edgeId] ~= nil
-        -- LOLLO TODO I commented this out, check it, it should be better this way
-        --and #nodeEdgeBeforeIntersection_indexedBy_inEdgeId[edgeId] > 0 
-        then -- this edge enters the intersection behind the priority light:
-            -- if I am here, I have gone too far back
-            logger.print('this edge leads from the priority signal into the intersection')
+        -- logger.print('nodeEdgeBeforeIntersection_indexedBy_inEdgeId[edgeId] =') logger.debugPrint(nodeEdgeBeforeIntersection_indexedBy_inEdgeId[edgeId])
+        if nodeEdgeBeforeIntersection_indexedBy_inEdgeId[edgeId] ~= nil then
+            -- this edge enters the intersection behind the priority light: if I am here, I have gone too far back
+            logger.print('this edge leads from a priority signal into the intersection')
             return { isGoAhead = false }
         end
         local baseEdge = api.engine.getComponent(edgeId, api.type.ComponentType.BASE_EDGE)
@@ -587,7 +584,10 @@ funcs.getNextLightsOrStations = function(nodeEdgeBeforeIntersection_indexedBy_in
             -- get out if there is a priority signal on this edge, you don't want to compete.
             -- If there are more signals on the same edge, tough, get out anyway.
             for _, signalId in pairs(signalIdsInEdge) do
-                if prioritySignalIds_indexed[signalId] then return { isGoAhead = false } end
+                if prioritySignalIds_indexed[signalId] then
+                    logger.print('one of these signals has priority, don\'t want to compete, leaving')
+                    return { isGoAhead = false }
+                end
             end
             -- check if the intersection is reachable from both ends of the edge, there could be a light blocking it or a cross instead of a switch
             -- You might check this before checking the lights, and leave if isPath is false LOLLO TODO check if it is faster that way
