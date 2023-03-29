@@ -299,7 +299,7 @@ local funcs = {
     ---comment
     ---@param baseEdge integer
     ---@return integer[]
-    getLightIds = function(baseEdge)
+    getSignalIds = function(baseEdge)
         local results = {}
         for _, object in pairs(baseEdge.objects) do
             local objectId = object[1]
@@ -597,13 +597,13 @@ funcs.getNextLightsOrStations = function(nodeEdgeBeforeIntersection_indexedBy_in
             return { isGoAhead = false }
         end
         local baseEdge = api.engine.getComponent(edgeId, api.type.ComponentType.BASE_EDGE)
-        local lightIdsInEdge = funcs.getLightIds(baseEdge)
-        if #lightIdsInEdge > 0 then -- this is it
-            logger.print('this edge has lights')
+        local signalIdsInEdge = funcs.getSignalIds(baseEdge)
+        if #signalIdsInEdge > 0 then -- this is it
+            logger.print('this edge has signals')
             -- get out if there is a priority signal on this edge, you don't want to compete.
             -- If there are more signals on the same edge, tough, get out anyway.
-            for _, lightId in pairs(lightIdsInEdge) do
-                if prioritySignalIds_indexed[lightId] then return { isGoAhead = false } end
+            for _, signalId in pairs(signalIdsInEdge) do
+                if prioritySignalIds_indexed[signalId] then return { isGoAhead = false } end
             end
             -- check if the intersection is reachable from both ends of the edge, there could be a light blocking it or a cross instead of a switch
             -- You might check this before checking the lights, and leave if isPath is false LOLLO TODO check if it is faster that way
