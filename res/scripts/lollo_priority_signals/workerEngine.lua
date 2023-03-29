@@ -7,8 +7,12 @@ local stateHelpers = require('lollo_priority_signals.stateHelpers')
 local  _signalModelId_EraA, _signalModelId_EraC
 local _texts = { }
 
+---nodeId, inEdgeId, props
+---@type table<integer, table<integer, {isPriorityEdgeDirTowardsIntersection: boolean, priorityEdgeIds: integer[], outerSignalId: integer}>>
 local nodeEdgeBeforeIntersection_indexedBy_intersectionNodeId_inEdgeId = {}
 local nodeEdgeBehindIntersection_indexedBy_intersectionNodeId_inEdgeId = {}
+---vehicleId, gameTimeMsec
+---@type table<integer, number>
 local stopGameTimes_indexedBy_stoppedVehicleIds = {}
 
 local _utils = {
@@ -178,8 +182,6 @@ return {
                     -- By construction, I cannot have more than one priority signal on any edge.
                     -- However, different priority signals might share the same intersection node,
                     -- so I have a table of tables.
-                    -- nodeId, inEdgeId, props
-                    ---@type table<integer, table<integer, {isPriorityEdgeDirTowardsIntersection: boolean, priorityEdgeIds: integer[], outerSignalId: integer}>>
                     nodeEdgeBeforeIntersection_indexedBy_intersectionNodeId_inEdgeId = {}
 
                     local chains_indexedBy_innerSignalId = {}
