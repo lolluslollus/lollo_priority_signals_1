@@ -35,7 +35,8 @@ local _utils = {
                 -- if the train has not been stopped (I don't know what enum this is, it is not api.type.enum.TransportVehicleState)
                 -- if it is at terminal, the state is 3
                 -- if the user stops a train, its movePath will shorten as the train halts, to only include the edges (or expanded nodes) occupied by the train
-                if isGetStoppedVehicles or movePath.state ~= 2 then
+                -- if isGetStoppedVehicles or movePath.state ~= 2 then
+                if isGetStoppedVehicles or movePath.dyn.speed > 0 then -- this should save us from long-lasting gridlocks
                     for p = movePath.dyn.pathPos.edgeIndex + 1, #movePath.path.edges, 1 do
                         local currentMovePathBit = movePath.path.edges[p]
                         -- logger.print('currentMovePathBit =') logger.debugPrint(currentMovePathBit)
@@ -191,6 +192,7 @@ return {
                             if not(bitsBeforeIntersection_indexedBy_intersectionNodeId_inEdgeId[intersectionProps.nodeId]) then
                                 bitsBeforeIntersection_indexedBy_intersectionNodeId_inEdgeId[intersectionProps.nodeId] =
                                 {[intersectionProps.inEdgeId] = {
+                                    innerSignalId = signalId,
                                     isInEdgeDirTowardsIntersection = intersectionProps.isInEdgeDirTowardsIntersection,
                                     priorityEdgeIds = intersectionProps.priorityEdgeIds,
                                     outerSignalId = signalId,
@@ -198,6 +200,7 @@ return {
                             elseif not(bitsBeforeIntersection_indexedBy_intersectionNodeId_inEdgeId[intersectionProps.nodeId][intersectionProps.inEdgeId]) then
                                 bitsBeforeIntersection_indexedBy_intersectionNodeId_inEdgeId[intersectionProps.nodeId][intersectionProps.inEdgeId] =
                                 {
+                                    innerSignalId = signalId,
                                     isInEdgeDirTowardsIntersection = intersectionProps.isInEdgeDirTowardsIntersection,
                                     priorityEdgeIds = intersectionProps.priorityEdgeIds,
                                     outerSignalId = signalId,
@@ -250,26 +253,26 @@ return {
 
                 for intersectionNodeId, bitsBeforeIntersection_indexedBy_inEdgeId in pairs(bitsBeforeIntersection_indexedBy_intersectionNodeId_inEdgeId) do
                     logger.print('intersectionNodeId = ' .. intersectionNodeId .. '; bitsBeforeIntersection_indexedBy_inEdgeId =') logger.debugPrint(bitsBeforeIntersection_indexedBy_inEdgeId)
-                    -- this assumes one-way priority signals
-                    -- local hasIncomingPriorityVehicles, priorityVehicleIds = _getVehicleIdsNearPrioritySignals(bitsBeforeIntersection_indexedBy_inEdgeId)
-                    -- this should work with two-way priority signals
-                    local hasIncomingPriorityVehicles, priorityVehicleIds = _utils._getPriorityVehicleIds(bitsBeforeIntersection_indexedBy_inEdgeId)
-                    logger.print('priorityVehicleIds =') logger.debugPrint(priorityVehicleIds)
+                    local hasIncomingPriorityVehicles, priorityVehicleIds_moving = _utils._getPriorityVehicleIds(bitsBeforeIntersection_indexedBy_inEdgeId)
+                    logger.print('priorityVehicleIds_moving =') logger.debugPrint(priorityVehicleIds_moving)
                     if hasIncomingPriorityVehicles then
                         for edgeIdGivingWay, bitBehindIntersection in pairs(bitsBehindIntersection_indexedBy_intersectionNodeId_inEdgeId[intersectionNodeId]) do
                             print('edgeIdGivingWay = ' .. edgeIdGivingWay) -- edgeIdGivingWay = 25624
                             -- avoid gridlocks: do not stop a vehicle that must give way if it is on the path of a priority vehicle
-                            if not(_utils._isAnyTrainBoundForEdgeOrNode(priorityVehicleIds, edgeIdGivingWay))
+                            if not(_utils._isAnyTrainBoundForEdgeOrNode(priorityVehicleIds_moving, edgeIdGivingWay))
                             --[[
                                 LOLLO TODO if I have a cross, I should check the nodes, the edges won't do.
-                                The following only works if the ordinary signal is far enough from the intersection, which hampers usability.
-                            -- and not(_utils._isAnyTrainBoundForEdgeOrNode(priorityVehicleIds, bitBehindIntersection.nodeIdTowardsIntersection))
+                                The following only works if the ordinary signal is far enough from the intersection, otherwise you get gridlocks; this hampers usability.
+                            -- and not(_utils._isAnyTrainBoundForEdgeOrNode(priorityVehicleIds_moving, bitBehindIntersection.nodeIdTowardsIntersection))
                                 Instead, if the slow train is heading for the same node as the priority train, we stop the slow train abruptly.
                                 This might still cause some gridlocks: check it.
                             ]]
                             then
                                 -- logger.print('no priority trains are bound for edge ' .. edgeIdGivingWay)
-                                local isStopAtOnce = _utils._isAnyTrainBoundForEdgeOrNode(priorityVehicleIds, bitBehindIntersection.nodeIdTowardsIntersection)
+                                -- See above about usability and gridlocks
+                                -- After the priority train has come to a halt, the routine won't find it anymore and the slow train should restart. Still stupid, but better.
+                                -- For now, I go safe and stop at once with crossings (not switches):
+                                local isStopAtOnce = _utils._isAnyTrainBoundForEdgeOrNode(priorityVehicleIds_moving, bitBehindIntersection.nodeIdTowardsIntersection)
                                 -- logger.print('isStopAtOnce = ' .. tostring(isStopAtOnce))
                                 -- In the following, false means "only occupied now", true means "occupied recently, now or soon"
                                 -- "recently" and "soon" mean "since a vehicle left the last station and before it reaches the next"
@@ -308,35 +311,42 @@ return {
                                     -- movePath.dyn.pathPos.edgeIndex + 1 is where the centre of the train is, not its head.
                                     -- at this point, the train head might well be past the intersection.
                                     for p = movePath.dyn.pathPos.edgeIndex + 1, #movePath.path.edges, 1 do
-                                        local currentMovePathBit = movePath.path.edges[p]
-                                        if currentMovePathBit.edgeId.entity == edgeIdGivingWay then
-                                            -- stop trains heading for the intersection
-                                            if currentMovePathBit.dir == bitBehindIntersection.isGiveWayEdgeDirTowardsIntersection then
-                                                if not(api.engine.getComponent(vehicleId, api.type.ComponentType.TRANSPORT_VEHICLE).userStopped) then
-                                                    if isStopAtOnce then
-                                                        api.cmd.sendCommand(
-                                                            api.cmd.make.reverseVehicle(vehicleId),
-                                                            function()
+                                        -- if the train is heading for the intersection, and not merely transiting on the give-way bit...
+                                        if movePath.path.edges[p].edgeId.entity == bitBehindIntersection.inEdgeId then
+                                            for pp = p, movePath.dyn.pathPos.edgeIndex + 1, -1 do
+                                                local currentMovePathBit = movePath.path.edges[pp]
+                                                -- the belly of the train has not passed the intersection yet
+                                                if currentMovePathBit.edgeId.entity == edgeIdGivingWay then
+                                                    -- stop the train if it is heading for the intersection (probably redundant by now)
+                                                    if currentMovePathBit.dir == bitBehindIntersection.isGiveWayEdgeDirTowardsIntersection then
+                                                        if not(api.engine.getComponent(vehicleId, api.type.ComponentType.TRANSPORT_VEHICLE).userStopped) then
+                                                            if isStopAtOnce or (p == pp) then
                                                                 api.cmd.sendCommand(
-                                                                    api.cmd.make.setUserStopped(vehicleId, true),
-                                                                    api.cmd.sendCommand(api.cmd.make.reverseVehicle(vehicleId))
+                                                                    api.cmd.make.reverseVehicle(vehicleId),
+                                                                    function()
+                                                                        api.cmd.sendCommand(
+                                                                            api.cmd.make.setUserStopped(vehicleId, true),
+                                                                            api.cmd.sendCommand(api.cmd.make.reverseVehicle(vehicleId))
+                                                                        )
+                                                                    end
                                                                 )
+                                                            else
+                                                                api.cmd.sendCommand(api.cmd.make.setUserStopped(vehicleId, true))
                                                             end
-                                                        )
+                                                            logger.print('vehicle ' .. vehicleId .. ' just stopped')
+                                                        else
+                                                            logger.print('vehicle ' .. vehicleId .. ' already stopped')
+                                                        end
+                                                        stopGameTimes_indexedBy_stoppedVehicleIds[vehicleId] = _gameTime_msec
+                                                        break
+                                                    -- ignore trains heading out of the intersection
                                                     else
-                                                        api.cmd.sendCommand(api.cmd.make.setUserStopped(vehicleId, true))
+                                                        logger.print('vehicle ' .. vehicleId .. ' not stopped coz is heading away from the intersection')
+                                                        break
                                                     end
-                                                    logger.print('vehicle ' .. vehicleId .. ' just stopped')
-                                                else
-                                                    logger.print('vehicle ' .. vehicleId .. ' already stopped')
                                                 end
-                                                stopGameTimes_indexedBy_stoppedVehicleIds[vehicleId] = _gameTime_msec
-                                                break
-                                            -- ignore trains heading out of the intersection
-                                            else
-                                                logger.print('vehicle ' .. vehicleId .. ' not stopped coz is heading away from the intersection')
-                                                break
                                             end
+                                            break
                                         end
                                     end
 
@@ -350,7 +360,7 @@ return {
                                         -- stop trains heading for the intersection
                                         if headReservedMovePathBit.dir == bitBehindIntersection.isGiveWayEdgeDirTowardsIntersection then
                                             if not(api.engine.getComponent(vehicleId, api.type.ComponentType.TRANSPORT_VEHICLE).userStopped) then
-                                                local isStopAtOnce = _utils._isAnyTrainBoundForEdgeOrNode(priorityVehicleIds, bitBehindIntersection.nodeIdTowardsIntersection)
+                                                local isStopAtOnce = _utils._isAnyTrainBoundForEdgeOrNode(priorityVehicleIds_moving, bitBehindIntersection.nodeIdTowardsIntersection)
                                                 logger.print('isStopAtOnce = ' .. tostring(isStopAtOnce))
                 
                                                 if isStopAtOnce then

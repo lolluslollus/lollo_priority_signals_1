@@ -12,7 +12,7 @@ To prioritise trains over a longer stretch of track, place more priority signals
 If you place no priority signals on one branch, or you place them too far from the intersection or from each other (see the notes), trains entering the intersection from that branch will not get priority. 
 
 Giving priority:
-If you place no ordinary signals or stations on one branch, or you place them too far from the intersection (see the notes), trains entering the intersection from that branch will not give way. If you place an ordinary signal too close to an intersection, trains passing it will stop abruptly.
+If you place no ordinary signals or stations on one branch, or you place them too far from the intersection (see the notes), trains entering the intersection from that branch will not give way. If you place an ordinary signal too close to an intersection, trains passing it will stop abruptly, or they may stop too late. This is ugly; to fix it, ask UG to give us an api to turn signals red.
 
 [b]Notes:[/b]
 1) Tracks are made of subsequent segments, you can check them with debug mode and <AltGr + L>. If a signal is too many segments apart from an intersection, never mind how short they are, the priority computation will ignore it. This is inconvenient but gives better performance. Priority signals must be within ]] .. constants.maxNSegmentsBeforeIntersection .. [[ segments between one another, or from the intersection. Ordinary signals or stations must be within ]] .. constants.maxNSegmentsBehindIntersection .. [[ segments away from the intersection.
