@@ -277,6 +277,12 @@ return {
                                 local vehicleIdsNearGiveWaySignals = api.engine.system.transportVehicleSystem.getVehicles({edgeIdGivingWay}, false)
                                 logger.print('vehicleIdsNearGiveWaySignals =') logger.debugPrint(vehicleIdsNearGiveWaySignals)
                                 for _, vehicleId in pairs(vehicleIdsNearGiveWaySignals) do
+                                    -- LOLLO TODO check this with a train, which is much longer than the 
+                                    -- edge with the yield signal:
+                                    -- the train stops when it's head is far past the signal,
+                                    -- if another train enters the priority block.
+                                    -- Instead, it should stop earlier or proceed.
+                                    -- This happens with a cross and possibly with a switch.
                                     local movePath = api.engine.getComponent(vehicleId, api.type.ComponentType.MOVE_PATH)
                                     for p = movePath.dyn.pathPos.edgeIndex + 1, #movePath.path.edges, 1 do
                                         local currentMovePathBit = movePath.path.edges[p]
