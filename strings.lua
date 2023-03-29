@@ -8,7 +8,8 @@ function data()
 Place these before an intersection and ordinary signals (or a station) behind. Trains entering the intersection via priority signals will have priority over those entering via ordinary signals (or from the station).
 
 Getting priority:
-If you want to prioritise trains over a longer stretch of track, place more priority signals farther ahead of the intersection (not too far apart, see the notes). You can chain up to ]] .. constants.maxNChainedPrioritySignalsBeforeIntersection .. [[. If you have a station track closely preceding a priority signal, trains on it will receive priority as soon as they start.
+If you want to prioritise trains over a longer stretch of track, place more priority signals farther ahead of the intersection. You can chain up to ]] .. constants.maxNChainedPrioritySignalsBeforeIntersection .. [[. If you have a station track closely preceding a priority signal, trains on it will receive priority as soon as they start.
+If you place no priority signals on one branch, or you place them too far from the intersection or from each other (see the notes), trains entering the intersection from that branch will not get priority. 
 
 Giving priority:
 If you place no ordinary signals or stations on one branch, or you place them too far from the intersection (see the notes), trains entering the intersection from that branch will not give way. If you place an ordinary signal too close to an intersection, trains passing it will stop abruptly.
