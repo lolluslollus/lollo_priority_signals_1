@@ -17,7 +17,7 @@ If you place no ordinary signals or stations on one branch, or you place them to
 [b]Notes:[/b]
 1) Tracks are made of subsequent segments, you can check them with debug mode and <AltGr + L>. If a signal is too many segments apart from an intersection, never mind how short they are, the priority computation will ignore it. This is inconvenient but gives better performance. Priority signals must be within ]] .. constants.maxNSegmentsBeforeIntersection .. [[ segments between one another, or from the intersection. Ordinary signals or stations must be within ]] .. constants.maxNSegmentsBehindIntersection .. [[ segments away from the intersection.
 2) Every signal has a white arrow that appears when you open the signal menu. Two-way priority signals only prioritise trains running along the white arrow - not those running against it. This is akin to ordinary two-way signals and waypoints.
-3) Switch priority computations on and off with the icon in the bottom bar. When they are off, priority signals will behave like standard signals.
+3) Switch priority computations on and off with the icon in the bottom bar. When they are off, priority signals will behave like standard signals. When they are on, the mod will recalculate the track graph every ]] .. constants.refreshGraphPeriodMsec .. [[ mSec.
 4) Priority signals are expensive, only use them where you really need them.
 			]],
             ["ModName"] = "Priority signals for tracks",
