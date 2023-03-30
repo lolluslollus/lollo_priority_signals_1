@@ -400,6 +400,7 @@ return {
                 -- restart vehicles that don't need to wait anymore
                 -- LOLLO TODO this thing restarts trains the user has manually stopped: this is no good
                 -- I do clean the table, but there is still a while when manually stopped vehicles are restarted automatically.
+                -- The solution is crude: manually unstop the vehicle multiple times until it reaches an intersection, where it will drive on on its own.
                 logger.print('_gameTime_msec = ' .. tostring(_gameTime_msec) .. '; stopProps_indexedBy_stoppedVehicleIds =') logger.debugPrint(stopProps_indexedBy_stoppedVehicleIds)
                 for vehicleId, stopProps in pairs(stopProps_indexedBy_stoppedVehicleIds) do
                     if stopProps ~= nil and stopProps.gameTimeMsec ~= _gameTime_msec then
