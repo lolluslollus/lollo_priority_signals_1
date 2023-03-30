@@ -676,6 +676,7 @@ funcs.getGiveWaySignalsOrStations = function(bitsBeforeIntersection_indexedBy_in
         local connectedEdgeIds = funcs.getConnectedEdgeIdsExceptSome(bitsBeforeIntersection_indexedBy_inEdgeId, intersectionNodeId)
         logger.print('_getNext1 got intersectionNodeId = ' .. intersectionNodeId .. ', connectedEdgeIds =') logger.debugPrint(connectedEdgeIds)
         _getNext2(connectedEdgeIds, intersectionNodeId, nil, intersectionNodeId, nil, _getNext2, 0, bitsBeforeIntersection_indexedBy_inEdgeId)
+        coroutine.yield()
     end
 
     return bitsBehindIntersection_indexedBy_intersectionNodeId_edgeIdGivingWay

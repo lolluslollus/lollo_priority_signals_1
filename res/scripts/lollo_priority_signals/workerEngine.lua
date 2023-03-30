@@ -4,20 +4,140 @@ local logger = require ('lollo_priority_signals.logger')
 local signalHelpers = require('lollo_priority_signals.signalHelpers')
 local stateHelpers = require('lollo_priority_signals.stateHelpers')
 
-local  _signalModelId_EraA, _signalModelId_EraC
-local _texts = { }
+local _mSignalModelId_EraA, _mSignalModelId_EraC
+local _mTexts = { }
 
 ---nodeId, inEdgeId, props
 ---@type table<integer, table<integer, {isInEdgeDirTowardsIntersection: boolean, priorityEdgeIds: integer[], outerSignalId: integer}>>
-local bitsBeforeIntersection_indexedBy_intersectionNodeId_inEdgeId = {}
-local bitsBehindIntersection_indexedBy_intersectionNodeId_edgeIdGivingWay = {}
+local _mBitsBeforeIntersection_indexedBy_intersectionNodeId_inEdgeId = {}
+local _mBitsBehindIntersection_indexedBy_intersectionNodeId_edgeIdGivingWay = {}
 ---@type table<integer, integer[]>
-local inEdgeIdsBehindIntersections_indexedBy_edgeIdGivingWay = {}
+local _mInEdgeIdsBehindIntersections_indexedBy_edgeIdGivingWay = {}
 ---@type table<integer, integer[]>
-local intersectionNodeIds_indexedBy_edgeIdGivingWay = {}
+local _mIntersectionNodeIds_indexedBy_edgeIdGivingWay = {}
 ---vehicleId, props
 ---@type table<integer, {gameTimeMsec: number, isStoppedAtOnce: boolean}>
-local stopProps_indexedBy_stoppedVehicleIds = {}
+local _mStopProps_indexedBy_stoppedVehicleIds = {}
+
+local _mGetGraphCoroutine
+local _updateGraph = function()
+    local _startTick = os.clock()
+    logger.print('_mGetGraphCoroutine - start updating graph at ' .. tostring(_startTick))
+    -- LOLLO TODO see if you can multithread this.
+    -- coroutines hog the lua state coz it waits for them.
+    --[[
+        LOLLO NOTE one-way lights are read as two-way lights,
+        and they don't appear in the menu if they have no two-way counterparts, or if those counterparts have expired.
+    ]]
+    local allPrioritySignalIds = {
+        table.unpack(signalHelpers.getAllEdgeObjectsWithModelId(_mSignalModelId_EraA)),
+        table.unpack(signalHelpers.getAllEdgeObjectsWithModelId(_mSignalModelId_EraC))
+    }
+    logger.print('allPrioritySignalIds =') logger.debugPrint(allPrioritySignalIds)
+
+    ---@type table<integer, boolean> --signalId, true
+    local prioritySignalIds_indexed = {}
+    for _, signalId in pairs(allPrioritySignalIds) do
+        prioritySignalIds_indexed[signalId] = true -- _edgeObject2EdgeMap[signalId]
+    end
+    logger.print('prioritySignalIds_indexed =') logger.debugPrint(prioritySignalIds_indexed)
+    -- By construction, I cannot have more than one priority signal on any edge.
+    -- However, different priority signals might share the same intersection node,
+    -- so I have a table of tables.
+    local bitsBeforeIntersection_indexedBy_intersectionNodeId_inEdgeId = {}
+
+    local chains_indexedBy_innerSignalId = {}
+    for signalId, _ in pairs(prioritySignalIds_indexed) do
+        local intersectionProps = signalHelpers.getNextIntersectionBehind(signalId, prioritySignalIds_indexed)
+        -- logger.print('signal ' .. signalId .. ' has intersectionProps =') logger.debugPrint(intersectionProps)
+        if intersectionProps.isIntersectionFound then
+            if not(bitsBeforeIntersection_indexedBy_intersectionNodeId_inEdgeId[intersectionProps.nodeId]) then
+                bitsBeforeIntersection_indexedBy_intersectionNodeId_inEdgeId[intersectionProps.nodeId] =
+                {[intersectionProps.inEdgeId] = {
+                    innerSignalId = signalId,
+                    isInEdgeDirTowardsIntersection = intersectionProps.isInEdgeDirTowardsIntersection,
+                    priorityEdgeIds = intersectionProps.priorityEdgeIds,
+                    outerSignalId = signalId,
+                }}
+            elseif not(bitsBeforeIntersection_indexedBy_intersectionNodeId_inEdgeId[intersectionProps.nodeId][intersectionProps.inEdgeId]) then
+                bitsBeforeIntersection_indexedBy_intersectionNodeId_inEdgeId[intersectionProps.nodeId][intersectionProps.inEdgeId] =
+                {
+                    innerSignalId = signalId,
+                    isInEdgeDirTowardsIntersection = intersectionProps.isInEdgeDirTowardsIntersection,
+                    priorityEdgeIds = intersectionProps.priorityEdgeIds,
+                    outerSignalId = signalId,
+                }
+            elseif #intersectionProps.priorityEdgeIds > #bitsBeforeIntersection_indexedBy_intersectionNodeId_inEdgeId[intersectionProps.nodeId][intersectionProps.inEdgeId].priorityEdgeIds then
+                logger.warn('this should never happen: got two sets of intersectionProps, the second has nodeId = ' .. intersectionProps.nodeId .. ' and inEdgeId = ' .. intersectionProps.inEdgeId)
+                bitsBeforeIntersection_indexedBy_intersectionNodeId_inEdgeId[intersectionProps.nodeId][intersectionProps.inEdgeId].priorityEdgeIds = intersectionProps.priorityEdgeIds
+            end
+        -- these stretches of track are chained to others, which are closer to the intersection
+        elseif intersectionProps.isPrioritySignalFound then
+            if not(chains_indexedBy_innerSignalId[intersectionProps.innerSignalId]) then
+                chains_indexedBy_innerSignalId[intersectionProps.innerSignalId] = {
+                    outerSignalId = signalId,
+                    priorityEdgeIds = intersectionProps.priorityEdgeIds,
+                }
+            else
+                logger.warn('this should never happen: got two sets of intersectionProps indexed by the same signalId = ' .. intersectionProps.innerSignalId)
+                arrayUtils.concatValues(chains_indexedBy_innerSignalId[intersectionProps.innerSignalId].priorityEdgeIds, intersectionProps.priorityEdgeIds)
+            end
+        end
+        coroutine.yield()
+    end
+    logger.print('before attaching the chains, bitsBeforeIntersection_indexedBy_intersectionNodeId_inEdgeId =') logger.debugPrint(bitsBeforeIntersection_indexedBy_intersectionNodeId_inEdgeId)
+    logger.print('chains_indexedBy_innerSignalId starts as') logger.debugPrint(chains_indexedBy_innerSignalId)
+    local count = 0
+    while count < constants.maxNChainedPrioritySignalsBeforeIntersection and arrayUtils.tableHasValues(chains_indexedBy_innerSignalId, true) do
+        for intersectionNodeId, bitsBeforeIntersection_indexedBy_inEdgeId in pairs(bitsBeforeIntersection_indexedBy_intersectionNodeId_inEdgeId) do
+            for inEdgeId, bitBeforeIntersection in pairs(bitsBeforeIntersection_indexedBy_inEdgeId) do
+                local chainsIndex = bitBeforeIntersection.outerSignalId -- write it down coz it gets overwritten in the following
+                local chainedProps = chains_indexedBy_innerSignalId[chainsIndex]
+                if chainedProps ~= nil then
+                    arrayUtils.concatValues(bitsBeforeIntersection_indexedBy_intersectionNodeId_inEdgeId[intersectionNodeId][inEdgeId].priorityEdgeIds, chainedProps.priorityEdgeIds)
+                    bitsBeforeIntersection_indexedBy_intersectionNodeId_inEdgeId[intersectionNodeId][inEdgeId].outerSignalId = chainedProps.outerSignalId
+                    chains_indexedBy_innerSignalId[chainsIndex] = nil
+                end
+            end
+        end
+        count = count + 1
+        logger.print('count = ' .. count .. ', chains_indexedBy_innerSignalId is now') logger.debugPrint(chains_indexedBy_innerSignalId)
+    end
+    logger.print('after attaching the chains, bitsBeforeIntersection_indexedBy_intersectionNodeId_inEdgeId =') logger.debugPrint(bitsBeforeIntersection_indexedBy_intersectionNodeId_inEdgeId)
+    coroutine.yield()
+
+    local bitsBehindIntersection_indexedBy_intersectionNodeId_edgeIdGivingWay = signalHelpers.getGiveWaySignalsOrStations(bitsBeforeIntersection_indexedBy_intersectionNodeId_inEdgeId, prioritySignalIds_indexed)
+    logger.print('bitsBehindIntersection_indexedBy_intersectionNodeId_edgeIdGivingWay =') logger.debugPrint(bitsBehindIntersection_indexedBy_intersectionNodeId_edgeIdGivingWay)
+    local inEdgeIdsBehindIntersections_indexedBy_edgeIdGivingWay = {}
+    local intersectionNodeIds_indexedBy_edgeIdGivingWay = {}
+    for intersectionNodeId, bitsBehindIntersection_indexedBy_edgeIdGivingWay in pairs(bitsBehindIntersection_indexedBy_intersectionNodeId_edgeIdGivingWay) do
+        for edgeIdGivingWay, bitBehindIntersection in pairs(bitsBehindIntersection_indexedBy_edgeIdGivingWay) do
+            if not(inEdgeIdsBehindIntersections_indexedBy_edgeIdGivingWay[edgeIdGivingWay]) then
+                inEdgeIdsBehindIntersections_indexedBy_edgeIdGivingWay[edgeIdGivingWay] = {bitBehindIntersection.inEdgeId}
+            else
+                table.insert(inEdgeIdsBehindIntersections_indexedBy_edgeIdGivingWay[edgeIdGivingWay], bitBehindIntersection.inEdgeId)
+            end
+
+            if not(intersectionNodeIds_indexedBy_edgeIdGivingWay[edgeIdGivingWay]) then
+                intersectionNodeIds_indexedBy_edgeIdGivingWay[edgeIdGivingWay] = {intersectionNodeId}
+            else
+                table.insert(intersectionNodeIds_indexedBy_edgeIdGivingWay[edgeIdGivingWay], intersectionNodeId)
+            end
+        end
+    end
+    coroutine.yield()
+    logger.print('inEdgeIdsBehindIntersections_indexedBy_edgeIdGivingWay =') logger.debugPrint(inEdgeIdsBehindIntersections_indexedBy_edgeIdGivingWay)
+    logger.print('intersectionNodeIds_indexedBy_edgeIdGivingWay =') logger.debugPrint(intersectionNodeIds_indexedBy_edgeIdGivingWay)
+
+    _mBitsBeforeIntersection_indexedBy_intersectionNodeId_inEdgeId = bitsBeforeIntersection_indexedBy_intersectionNodeId_inEdgeId
+    _mBitsBehindIntersection_indexedBy_intersectionNodeId_edgeIdGivingWay = bitsBehindIntersection_indexedBy_intersectionNodeId_edgeIdGivingWay
+    _mInEdgeIdsBehindIntersections_indexedBy_edgeIdGivingWay = inEdgeIdsBehindIntersections_indexedBy_edgeIdGivingWay
+    _mIntersectionNodeIds_indexedBy_edgeIdGivingWay = intersectionNodeIds_indexedBy_edgeIdGivingWay
+    if logger.isExtendedLog() then
+        local executionTime = math.ceil((os.clock() - _startTick) * 1000)
+        logger.print('_mGetGraphCoroutine - Updating graph took ' .. executionTime .. 'ms')
+    end
+end
 
 local _utils = {
     ---only reliable with trains that are not user-stopped
@@ -183,125 +303,31 @@ return {
                 ---@type table<integer, integer> --signalId, edgeId
                 local _edgeObject2EdgeMap = api.engine.system.streetSystem.getEdgeObject2EdgeMap()
 
-                if math.fmod(_gameTime_msec, constants.refreshGraphPeriodMsec) == 0 then
-                    logger.print('start getting graph at ' .. tostring(os.clock()))
-                    -- LOLLO TODO see if you can multithread this.
-                    -- coroutines hog the lua state coz it waits for them.
-                    --[[
-                        LOLLO NOTE one-way lights are read as two-way lights,
-                        and they don't appear in the menu if they have no two-way counterparts, or if those counterparts have expired.
-                    ]]
-                    local allPrioritySignalIds = {
-                        table.unpack(signalHelpers.getAllEdgeObjectsWithModelId(_signalModelId_EraA)),
-                        table.unpack(signalHelpers.getAllEdgeObjectsWithModelId(_signalModelId_EraC))
-                    }
-                    logger.print('allPrioritySignalIds =') logger.debugPrint(allPrioritySignalIds)
-
-                    ---@type table<integer, boolean> --signalId, true
-                    local prioritySignalIds_indexed = {}
-                    for _, signalId in pairs(allPrioritySignalIds) do
-                        prioritySignalIds_indexed[signalId] = true -- _edgeObject2EdgeMap[signalId]
+                -- if math.fmod(_gameTime_msec, constants.refreshGraphPeriodMsec) == 0 then
+                    if _mGetGraphCoroutine == nil then logger.print('_mGetGraphCoroutine is nil')
+                    else logger.print('_mGetGraphCoroutine status is ' .. coroutine.status(_mGetGraphCoroutine))
                     end
-                    logger.print('prioritySignalIds_indexed =') logger.debugPrint(prioritySignalIds_indexed)
-                    -- By construction, I cannot have more than one priority signal on any edge.
-                    -- However, different priority signals might share the same intersection node,
-                    -- so I have a table of tables.
-                    bitsBeforeIntersection_indexedBy_intersectionNodeId_inEdgeId = {}
 
-                    local chains_indexedBy_innerSignalId = {}
-                    for signalId, _ in pairs(prioritySignalIds_indexed) do
-                        local intersectionProps = signalHelpers.getNextIntersectionBehind(signalId, prioritySignalIds_indexed)
-                        -- logger.print('signal ' .. signalId .. ' has intersectionProps =') logger.debugPrint(intersectionProps)
-                        if intersectionProps.isIntersectionFound then
-                            if not(bitsBeforeIntersection_indexedBy_intersectionNodeId_inEdgeId[intersectionProps.nodeId]) then
-                                bitsBeforeIntersection_indexedBy_intersectionNodeId_inEdgeId[intersectionProps.nodeId] =
-                                {[intersectionProps.inEdgeId] = {
-                                    innerSignalId = signalId,
-                                    isInEdgeDirTowardsIntersection = intersectionProps.isInEdgeDirTowardsIntersection,
-                                    priorityEdgeIds = intersectionProps.priorityEdgeIds,
-                                    outerSignalId = signalId,
-                                }}
-                            elseif not(bitsBeforeIntersection_indexedBy_intersectionNodeId_inEdgeId[intersectionProps.nodeId][intersectionProps.inEdgeId]) then
-                                bitsBeforeIntersection_indexedBy_intersectionNodeId_inEdgeId[intersectionProps.nodeId][intersectionProps.inEdgeId] =
-                                {
-                                    innerSignalId = signalId,
-                                    isInEdgeDirTowardsIntersection = intersectionProps.isInEdgeDirTowardsIntersection,
-                                    priorityEdgeIds = intersectionProps.priorityEdgeIds,
-                                    outerSignalId = signalId,
-                                }
-                            elseif #intersectionProps.priorityEdgeIds > #bitsBeforeIntersection_indexedBy_intersectionNodeId_inEdgeId[intersectionProps.nodeId][intersectionProps.inEdgeId].priorityEdgeIds then
-                                logger.warn('this should never happen: got two sets of intersectionProps, the second has nodeId = ' .. intersectionProps.nodeId .. ' and inEdgeId = ' .. intersectionProps.inEdgeId)
-                                bitsBeforeIntersection_indexedBy_intersectionNodeId_inEdgeId[intersectionProps.nodeId][intersectionProps.inEdgeId].priorityEdgeIds = intersectionProps.priorityEdgeIds
-                            end
-                        -- these stretches of track are chained to others, which are closer to the intersection
-                        elseif intersectionProps.isPrioritySignalFound then
-                            if not(chains_indexedBy_innerSignalId[intersectionProps.innerSignalId]) then
-                                chains_indexedBy_innerSignalId[intersectionProps.innerSignalId] = {
-                                    outerSignalId = signalId,
-                                    priorityEdgeIds = intersectionProps.priorityEdgeIds,
-                                }
-                            else
-                                logger.warn('this should never happen: got two sets of intersectionProps indexed by the same signalId = ' .. intersectionProps.innerSignalId)
-                                arrayUtils.concatValues(chains_indexedBy_innerSignalId[intersectionProps.innerSignalId].priorityEdgeIds, intersectionProps.priorityEdgeIds)
-                            end
-                        end
+                    if _mGetGraphCoroutine == nil or coroutine.status(_mGetGraphCoroutine) == 'dead' then
+                        _mGetGraphCoroutine = coroutine.create(_updateGraph)
                     end
-                    logger.print('before attaching the chains, bitsBeforeIntersection_indexedBy_intersectionNodeId_inEdgeId =') logger.debugPrint(bitsBeforeIntersection_indexedBy_intersectionNodeId_inEdgeId)
-                    logger.print('chains_indexedBy_innerSignalId starts as') logger.debugPrint(chains_indexedBy_innerSignalId)
-                    local count = 0
-                    while count < constants.maxNChainedPrioritySignalsBeforeIntersection and arrayUtils.tableHasValues(chains_indexedBy_innerSignalId, true) do
-                        for intersectionNodeId, bitsBeforeIntersection_indexedBy_inEdgeId in pairs(bitsBeforeIntersection_indexedBy_intersectionNodeId_inEdgeId) do
-                            for inEdgeId, bitBeforeIntersection in pairs(bitsBeforeIntersection_indexedBy_inEdgeId) do
-                                local chainsIndex = bitBeforeIntersection.outerSignalId -- write it down coz it gets overwritten in the following
-                                local chainedProps = chains_indexedBy_innerSignalId[chainsIndex]
-                                if chainedProps ~= nil then
-                                    arrayUtils.concatValues(bitsBeforeIntersection_indexedBy_intersectionNodeId_inEdgeId[intersectionNodeId][inEdgeId].priorityEdgeIds, chainedProps.priorityEdgeIds)
-                                    bitsBeforeIntersection_indexedBy_intersectionNodeId_inEdgeId[intersectionNodeId][inEdgeId].outerSignalId = chainedProps.outerSignalId
-                                    chains_indexedBy_innerSignalId[chainsIndex] = nil
-                                end
-                            end
-                        end
-                        count = count + 1
-                        logger.print('count = ' .. count .. ', chains_indexedBy_innerSignalId is now') logger.debugPrint(chains_indexedBy_innerSignalId)
+                    for _ = 1, constants.numCoroutineResumesPerTick, 1 do
+                        coroutine.resume(_mGetGraphCoroutine)
                     end
-                    logger.print('after attaching the chains, bitsBeforeIntersection_indexedBy_intersectionNodeId_inEdgeId =') logger.debugPrint(bitsBeforeIntersection_indexedBy_intersectionNodeId_inEdgeId)
+                -- end -- update graph
 
-                    bitsBehindIntersection_indexedBy_intersectionNodeId_edgeIdGivingWay = signalHelpers.getGiveWaySignalsOrStations(bitsBeforeIntersection_indexedBy_intersectionNodeId_inEdgeId, prioritySignalIds_indexed)
-                    logger.print('bitsBehindIntersection_indexedBy_intersectionNodeId_edgeIdGivingWay =') logger.debugPrint(bitsBehindIntersection_indexedBy_intersectionNodeId_edgeIdGivingWay)
-                    inEdgeIdsBehindIntersections_indexedBy_edgeIdGivingWay = {}
-                    intersectionNodeIds_indexedBy_edgeIdGivingWay = {}
-                    for intersectionNodeId, bitsBehindIntersection_indexedBy_edgeIdGivingWay in pairs(bitsBehindIntersection_indexedBy_intersectionNodeId_edgeIdGivingWay) do
-                        for edgeIdGivingWay, bitBehindIntersection in pairs(bitsBehindIntersection_indexedBy_edgeIdGivingWay) do
-                            if not(inEdgeIdsBehindIntersections_indexedBy_edgeIdGivingWay[edgeIdGivingWay]) then
-                                inEdgeIdsBehindIntersections_indexedBy_edgeIdGivingWay[edgeIdGivingWay] = {bitBehindIntersection.inEdgeId}
-                            else
-                                table.insert(inEdgeIdsBehindIntersections_indexedBy_edgeIdGivingWay[edgeIdGivingWay], bitBehindIntersection.inEdgeId)
-                            end
-
-                            if not(intersectionNodeIds_indexedBy_edgeIdGivingWay[edgeIdGivingWay]) then
-                                intersectionNodeIds_indexedBy_edgeIdGivingWay[edgeIdGivingWay] = {intersectionNodeId}
-                            else
-                                table.insert(intersectionNodeIds_indexedBy_edgeIdGivingWay[edgeIdGivingWay], intersectionNodeId)
-                            end
-                        end
-                    end
-                    logger.print('inEdgeIdsBehindIntersections_indexedBy_edgeIdGivingWay =') logger.debugPrint(inEdgeIdsBehindIntersections_indexedBy_edgeIdGivingWay)
-                    logger.print('intersectionNodeIds_indexedBy_edgeIdGivingWay =') logger.debugPrint(intersectionNodeIds_indexedBy_edgeIdGivingWay)
-
-                    if logger.isExtendedLog() then
-                        local executionTime = math.ceil((os.clock() - _startTick) * 1000)
-                        logger.print('Finding edges and nodes took ' .. executionTime .. 'ms')
-                    end
-                end -- update graph
-
-                for intersectionNodeId, bitsBeforeIntersection_indexedBy_inEdgeId in pairs(bitsBeforeIntersection_indexedBy_intersectionNodeId_inEdgeId) do
-                    logger.print('intersectionNodeId = ' .. intersectionNodeId .. '; bitsBeforeIntersection_indexedBy_inEdgeId =') logger.debugPrint(bitsBeforeIntersection_indexedBy_inEdgeId)
+                for intersectionNodeId, bitsBeforeIntersection_indexedBy_inEdgeId in pairs(_mBitsBeforeIntersection_indexedBy_intersectionNodeId_inEdgeId) do
                     local hasIncomingPriorityVehicles, incomingPriorityVehicleIds = _utils.getPriorityVehicleIds(bitsBeforeIntersection_indexedBy_inEdgeId)
-                    logger.print('incomingPriorityVehicleIds =') logger.debugPrint(incomingPriorityVehicleIds)
+                    if logger.isExtendedLog() then
+                        logger.print('intersectionNodeId = ' .. intersectionNodeId .. '; bitsBeforeIntersection_indexedBy_inEdgeId =') logger.debugPrint(bitsBeforeIntersection_indexedBy_inEdgeId)
+                        logger.print('incomingPriorityVehicleIds =') logger.debugPrint(incomingPriorityVehicleIds)
+                    end
                     if hasIncomingPriorityVehicles then
-                        for edgeIdGivingWay, bitBehindIntersection in pairs(bitsBehindIntersection_indexedBy_intersectionNodeId_edgeIdGivingWay[intersectionNodeId]) do
-                            print('edgeIdGivingWay = ' .. edgeIdGivingWay) -- edgeIdGivingWay = 25624
-                            print('bitBehindIntersection = ') logger.debugPrint(bitBehindIntersection)
+                        for edgeIdGivingWay, bitBehindIntersection in pairs(_mBitsBehindIntersection_indexedBy_intersectionNodeId_edgeIdGivingWay[intersectionNodeId]) do
+                            if logger.isExtendedLog() then
+                                logger.print('edgeIdGivingWay = ' .. edgeIdGivingWay)
+                                logger.print('bitBehindIntersection = ') logger.debugPrint(bitBehindIntersection)
+                            end
                             -- avoid gridlocks: do not stop a slow vehicle if it is on the path of a priority vehicle - unless that priority vehicle is user-stopped
                             if not(_utils.isAnyTrainBoundForEdgeOrNode(incomingPriorityVehicleIds, edgeIdGivingWay))
                             then
@@ -310,31 +336,31 @@ return {
                                 logger.print('vehicleIdsNearGiveWaySignals =') logger.debugPrint(vehicleIdsNearGiveWaySignals)
                                 for _, vehicleId in pairs(vehicleIdsNearGiveWaySignals) do
                                     -- local vehicleIdsOnIntersection = api.engine.system.transportVehicleSystem.getVehicles({intersectionNodeId}, false)
-                                    local vehicleIdsOnAnyNearbyIntersection = api.engine.system.transportVehicleSystem.getVehicles(intersectionNodeIds_indexedBy_edgeIdGivingWay[edgeIdGivingWay], false)
+                                    local vehicleIdsOnAnyNearbyIntersection = api.engine.system.transportVehicleSystem.getVehicles(_mIntersectionNodeIds_indexedBy_edgeIdGivingWay[edgeIdGivingWay], false)
                                     -- avoid gridlocks: do not stop a vehicle that is already on any intersection where edgeIdGivingWay plays a role
                                     if not(arrayUtils.arrayHasValue(vehicleIdsOnAnyNearbyIntersection, vehicleId)) then
                                         -- MOVE_PATH and getVehicles change when a train is user-stopped:
                                         -- uncovered edges disappear, so the train fails to meet some estimator below and tries to restart,
                                         -- then the next tick will stop it again - or maybe not.
                                         -- to avoid this lurching, if a train is stopped and is near the give-way signal, we just leave it there
-                                        if stopProps_indexedBy_stoppedVehicleIds[vehicleId] ~= nil then
-                                            if stopProps_indexedBy_stoppedVehicleIds[vehicleId].isStoppedAtOnce then
+                                        if _mStopProps_indexedBy_stoppedVehicleIds[vehicleId] ~= nil then
+                                            if _mStopProps_indexedBy_stoppedVehicleIds[vehicleId].isStoppedAtOnce then
                                                 -- renew the timestamp
-                                                stopProps_indexedBy_stoppedVehicleIds[vehicleId] = {gameTimeMsec = _gameTime_msec, isStoppedAtOnce = true}
+                                                _mStopProps_indexedBy_stoppedVehicleIds[vehicleId] = {gameTimeMsec = _gameTime_msec, isStoppedAtOnce = true}
                                             else
                                                 -- there could be multiple intersections where the same edge has different roles: check them all
                                                 local vehicleIdsOnLastEdge = api.engine.system.transportVehicleSystem.getVehicles(
-                                                    inEdgeIdsBehindIntersections_indexedBy_edgeIdGivingWay[edgeIdGivingWay],
+                                                    _mInEdgeIdsBehindIntersections_indexedBy_edgeIdGivingWay[edgeIdGivingWay],
                                                     false
                                                 )
                                                 if arrayUtils.arrayHasValue(vehicleIdsOnLastEdge, vehicleId) then
                                                     -- stop at once if the train is still rolling and on any last edge before any intersection
                                                     _utils.stopAtOnce(vehicleId)
                                                     logger.print('vehicle ' .. vehicleId .. ' already stopped, now ground to a halt')
-                                                    stopProps_indexedBy_stoppedVehicleIds[vehicleId] = {gameTimeMsec = _gameTime_msec, isStoppedAtOnce = true}
+                                                    _mStopProps_indexedBy_stoppedVehicleIds[vehicleId] = {gameTimeMsec = _gameTime_msec, isStoppedAtOnce = true}
                                                 else
                                                     -- renew the timestamp
-                                                    stopProps_indexedBy_stoppedVehicleIds[vehicleId] = {gameTimeMsec = _gameTime_msec, isStoppedAtOnce = false}
+                                                    _mStopProps_indexedBy_stoppedVehicleIds[vehicleId] = {gameTimeMsec = _gameTime_msec, isStoppedAtOnce = false}
                                                 end
                                             end
                                         else
@@ -348,18 +374,18 @@ return {
                                                     if currentMovePathBit.dir == bitBehindIntersection.isInEdgeDirTowardsIntersection then
                                                         -- there could be multiple intersections where the same edge has different roles: check them all
                                                         local vehicleIdsOnLastEdge = api.engine.system.transportVehicleSystem.getVehicles(
-                                                            inEdgeIdsBehindIntersections_indexedBy_edgeIdGivingWay[edgeIdGivingWay],
+                                                            _mInEdgeIdsBehindIntersections_indexedBy_edgeIdGivingWay[edgeIdGivingWay],
                                                             false
                                                         )
                                                         if arrayUtils.arrayHasValue(vehicleIdsOnLastEdge, vehicleId) then
                                                             -- stop at once if the train is still rolling and on any last edge before any intersection
                                                             _utils.stopAtOnce(vehicleId)
                                                             logger.print('vehicle ' .. vehicleId .. ' just stopped at once')
-                                                            stopProps_indexedBy_stoppedVehicleIds[vehicleId] = {gameTimeMsec = _gameTime_msec, isStoppedAtOnce = true}
+                                                            _mStopProps_indexedBy_stoppedVehicleIds[vehicleId] = {gameTimeMsec = _gameTime_msec, isStoppedAtOnce = true}
                                                         else
                                                             _utils.stopSlowly(vehicleId)
                                                             logger.print('vehicle ' .. vehicleId .. ' just stopped slowly')
-                                                            stopProps_indexedBy_stoppedVehicleIds[vehicleId] = {gameTimeMsec = _gameTime_msec, isStoppedAtOnce = false}
+                                                            _mStopProps_indexedBy_stoppedVehicleIds[vehicleId] = {gameTimeMsec = _gameTime_msec, isStoppedAtOnce = false}
                                                         end
                                                         break
                                                     else
@@ -405,12 +431,12 @@ return {
                 -- LOLLO TODO this thing restarts trains the user has manually stopped: this is no good
                 -- I do clean the table, but there is still a while when manually stopped vehicles are restarted automatically.
                 -- The solution is crude: manually unstop the vehicle multiple times until it reaches an intersection, where it will drive on on its own.
-                logger.print('_gameTime_msec = ' .. tostring(_gameTime_msec) .. '; stopProps_indexedBy_stoppedVehicleIds =') logger.debugPrint(stopProps_indexedBy_stoppedVehicleIds)
-                for vehicleId, stopProps in pairs(stopProps_indexedBy_stoppedVehicleIds) do
+                logger.print('_gameTime_msec = ' .. tostring(_gameTime_msec) .. '; stopProps_indexedBy_stoppedVehicleIds =') logger.debugPrint(_mStopProps_indexedBy_stoppedVehicleIds)
+                for vehicleId, stopProps in pairs(_mStopProps_indexedBy_stoppedVehicleIds) do
                     if stopProps ~= nil and stopProps.gameTimeMsec ~= _gameTime_msec then
                         api.cmd.sendCommand(api.cmd.make.setUserStopped(vehicleId, false))
                         logger.print('vehicle ' .. vehicleId .. ' restarted')
-                        stopProps_indexedBy_stoppedVehicleIds[vehicleId] = nil
+                        _mStopProps_indexedBy_stoppedVehicleIds[vehicleId] = nil
                     end
                 end
 
@@ -447,9 +473,9 @@ return {
         if api.gui ~= nil then return end
 
         logger.print('workerEngine.load firing')
-        _signalModelId_EraA = api.res.modelRep.find('railroad/lollo_priority_signals/signal_path_a.mdl')
-        _signalModelId_EraC = api.res.modelRep.find('railroad/lollo_priority_signals/signal_path_c.mdl')
-        logger.print('_signalModelId_EraA =') logger.debugPrint(_signalModelId_EraA)
-        logger.print('_signalModelId_EraC =') logger.debugPrint(_signalModelId_EraC)
+        _mSignalModelId_EraA = api.res.modelRep.find('railroad/lollo_priority_signals/signal_path_a.mdl')
+        _mSignalModelId_EraC = api.res.modelRep.find('railroad/lollo_priority_signals/signal_path_c.mdl')
+        logger.print('_signalModelId_EraA =') logger.debugPrint(_mSignalModelId_EraA)
+        logger.print('_signalModelId_EraC =') logger.debugPrint(_mSignalModelId_EraC)
     end,
 }
