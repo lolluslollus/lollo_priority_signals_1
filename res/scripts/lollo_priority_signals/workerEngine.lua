@@ -171,7 +171,8 @@ return {
 
         xpcall(
             function()
-                local _startTick = os.clock()
+                local _startTick = 0
+                if logger.isExtendedLog() then _startTick = os.clock() end
 
                 local _gameTime_sec = math.floor(_gameTime_msec / 1000)
                 -- leave if paused
@@ -183,6 +184,7 @@ return {
                 local _edgeObject2EdgeMap = api.engine.system.streetSystem.getEdgeObject2EdgeMap()
 
                 if math.fmod(_gameTime_msec, constants.refreshGraphPeriodMsec) == 0 then
+                    logger.print('start getting graph at ' .. tostring(os.clock()))
                     -- LOLLO TODO see if you can multithread this.
                     -- coroutines hog the lua state coz it waits for them.
                     --[[
