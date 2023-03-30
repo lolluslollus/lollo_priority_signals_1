@@ -183,7 +183,7 @@ return {
                 local _edgeObject2EdgeMap = api.engine.system.streetSystem.getEdgeObject2EdgeMap()
 
                 if math.fmod(_gameTime_msec, constants.refreshGraphPeriodMsec) == 0 then
-                    -- LOLLO TODO see if you can multithread this with https://lualanes.github.io/lanes/ or http://www.inf.puc-rio.br/~roberto/docs/ry08-05.pdf or similar.
+                    -- LOLLO TODO see if you can multithread this.
                     -- coroutines hog the lua state coz it waits for them.
                     --[[
                         LOLLO NOTE one-way lights are read as two-way lights,
