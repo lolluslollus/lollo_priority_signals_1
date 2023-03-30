@@ -280,7 +280,7 @@ return {
                                 logger.print('vehicleIdsNearGiveWaySignals =') logger.debugPrint(vehicleIdsNearGiveWaySignals)
                                 for _, vehicleId in pairs(vehicleIdsNearGiveWaySignals) do
                                     -- MOVE_PATH and getVehicles change when a train is user-stopped:
-                                    -- uncovered edges disappear and the train tries to restart,
+                                    -- uncovered edges disappear, so the train fails to meet some estimator below and tries to restart,
                                     -- then the next tick will stop it again - or maybe not.
                                     -- to avoid this lurching, if a train is stopped and is near the give-way signal, we just leave it there
                                     if stopGameTimes_indexedBy_stoppedVehicleIds[vehicleId] ~= nil then
