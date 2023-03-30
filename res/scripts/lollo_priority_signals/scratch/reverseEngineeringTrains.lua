@@ -1,19 +1,10 @@
 --[[
-    api.engine.getComponent(30047, api.type.ComponentType.TRAIN)
-    {
-        vehicles = {
-            [1] = 19936,
-        },
-        reservedFrom = 10, -- in movePath, these are the reserved segments, without base0 <-> base1 conversion
-        reservedTo = 12,
-    }
-]]
---[[
     in the following, false means "only occupied now", true means "occupied recently, now or soon"
     "recently" and "soon" mean "since a vehicle (left the last station or got stopped by the user) and (before it reaches the next station)"
     It works with edges and with intersection nodes (the bloated ones near which edges get short).
     If the user stops the train, the previously covered edges get removed at once.
-    once the train comes to a halt (or after an unpaused tick, I am not sure), only the edges covered by the train remain, and the bloated nodes at their ends, if any.
+    once the train comes to a halt, only the edges covered by the train remain, and the bloated nodes at their ends, if any.
+    So be careful when using true!
     api.engine.system.transportVehicleSystem.getVehicles({edgeOrNodeId}, true)
     {
         [1] = 29606,
@@ -329,15 +320,17 @@
     }
 ]]
 --[[
-    api.engine.getComponent(vehicleId, api.type.ComponentType.TRAIN)
+    api.engine.getComponent(29606, api.type.ComponentType.TRAIN)
     {
         vehicles = {
             [1] = 28625,
             [2] = 28708,
             [3] = 28933,
         },
-        -- these are the path.edges where this train has reserved a path
+        -- these are the path.edges where this train has reserved a path, same as in MOVE_PATH, , without base0 <-> base1 conversion
+        -- If the user stops the train, the previously covered edges get removed at once.
+        -- once the train comes to a halt, only the edges covered by the train remain, and the bloated nodes at their ends, if any.
         reservedFrom = 10,
-        reservedTo = 24, -- same base as MOVE_PATH
+        reservedTo = 24,
     }
 ]]
