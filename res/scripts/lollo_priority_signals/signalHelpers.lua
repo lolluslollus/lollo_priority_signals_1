@@ -550,14 +550,14 @@ end
 
 ---@param bitsBeforeIntersection_indexedBy_intersectionNodeId_inEdgeId table<integer, table<integer, {isInEdgeDirTowardsIntersection: boolean, priorityEdgeIds: integer[], outerSignalId: integer}>>
 ---@param prioritySignalIds_indexed table<integer, boolean>
----@return table<integer, table<integer, {inEdgeId: boolean, isGiveWayEdgeDirTowardsIntersection: boolean, isInEdgeDirTowardsIntersection: boolean, nodeIdTowardsIntersection: integer}>> -- intersection node id, edgeId that gives way, its direction, nodeId towards intersection
+---@return table<integer, table<integer, {inEdgeId: integer, isGiveWayEdgeDirTowardsIntersection: boolean, isInEdgeDirTowardsIntersection: boolean, nodeIdTowardsIntersection: integer}>> -- intersection node id, edgeId that gives way, its direction, nodeId towards intersection
 funcs.getNextLightsOrStations = function(bitsBeforeIntersection_indexedBy_intersectionNodeId_inEdgeId, prioritySignalIds_indexed)
-    local bitsBehindIntersection_indexedBy_intersectionNodeId_inEdgeId = {}
+    local bitsBehindIntersection_indexedBy_intersectionNodeId_edgeIdGivingWay = {}
 
     local _addEdgeGivingWay = function(edgeIdGivingWay, baseEdge, nodeIdTowardsIntersection, intersectionNodeId, inEdgeId, isInEdgeDirTowardsIntersection)
         logger.print('_addEdgeGivingWay starting, edgeIdGivingWay = ' .. edgeIdGivingWay)
-        if not(bitsBehindIntersection_indexedBy_intersectionNodeId_inEdgeId[intersectionNodeId]) then
-            bitsBehindIntersection_indexedBy_intersectionNodeId_inEdgeId[intersectionNodeId] =
+        if not(bitsBehindIntersection_indexedBy_intersectionNodeId_edgeIdGivingWay[intersectionNodeId]) then
+            bitsBehindIntersection_indexedBy_intersectionNodeId_edgeIdGivingWay[intersectionNodeId] =
             {[edgeIdGivingWay] = {
                 inEdgeId = inEdgeId,
                 isGiveWayEdgeDirTowardsIntersection = baseEdge.node1 == nodeIdTowardsIntersection,
@@ -565,7 +565,7 @@ funcs.getNextLightsOrStations = function(bitsBeforeIntersection_indexedBy_inters
                 nodeIdTowardsIntersection = nodeIdTowardsIntersection,
             }}
         else
-            bitsBehindIntersection_indexedBy_intersectionNodeId_inEdgeId[intersectionNodeId][edgeIdGivingWay] = {
+            bitsBehindIntersection_indexedBy_intersectionNodeId_edgeIdGivingWay[intersectionNodeId][edgeIdGivingWay] = {
                 inEdgeId = inEdgeId,
                 isGiveWayEdgeDirTowardsIntersection = baseEdge.node1 == nodeIdTowardsIntersection,
                 isInEdgeDirTowardsIntersection = isInEdgeDirTowardsIntersection,
@@ -678,7 +678,7 @@ funcs.getNextLightsOrStations = function(bitsBeforeIntersection_indexedBy_inters
         _getNext2(connectedEdgeIds, intersectionNodeId, nil, intersectionNodeId, nil, _getNext2, 0, bitsBeforeIntersection_indexedBy_inEdgeId)
     end
 
-    return bitsBehindIntersection_indexedBy_intersectionNodeId_inEdgeId
+    return bitsBehindIntersection_indexedBy_intersectionNodeId_edgeIdGivingWay
 end
 
 return funcs
