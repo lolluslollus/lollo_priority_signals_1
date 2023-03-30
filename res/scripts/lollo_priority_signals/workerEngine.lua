@@ -274,48 +274,52 @@ return {
                                 local vehicleIdsNearGiveWaySignals = api.engine.system.transportVehicleSystem.getVehicles({edgeIdGivingWay}, false)
                                 logger.print('vehicleIdsNearGiveWaySignals =') logger.debugPrint(vehicleIdsNearGiveWaySignals)
                                 for _, vehicleId in pairs(vehicleIdsNearGiveWaySignals) do
-                                    local movePath = api.engine.getComponent(vehicleId, api.type.ComponentType.MOVE_PATH)
-                                    -- at this point, the train head might well be past the intersection.
-                                    for p = movePath.dyn.pathPos.edgeIndex + 1, #movePath.path.edges, 1 do
-                                        -- if the train is heading for the intersection, and not merely transiting on the give-way bit...
-                                        if movePath.path.edges[p].edgeId.entity == bitBehindIntersection.inEdgeId then
-                                            for pp = p, movePath.dyn.pathPos.edgeIndex + 1, -1 do
-                                                local currentMovePathBit = movePath.path.edges[pp]
-                                                -- the belly of the train has not passed the intersection yet
-                                                if currentMovePathBit.edgeId.entity == edgeIdGivingWay then
-                                                    -- stop the train if it is heading for the intersection (probably redundant by now)
-                                                    if currentMovePathBit.dir == bitBehindIntersection.isGiveWayEdgeDirTowardsIntersection then
-                                                        if not(api.engine.getComponent(vehicleId, api.type.ComponentType.TRANSPORT_VEHICLE).userStopped) then
-                                                            if isStopAtOnce or (p == pp) then
-                                                                api.cmd.sendCommand(
-                                                                    api.cmd.make.reverseVehicle(vehicleId),
-                                                                    function()
-                                                                        api.cmd.sendCommand(
-                                                                            api.cmd.make.setUserStopped(vehicleId, true),
-                                                                            api.cmd.sendCommand(api.cmd.make.reverseVehicle(vehicleId))
-                                                                        )
-                                                                    end
-                                                                )
+                                    -- avoid lurching: if a train is stopped and is near the intersection, leave it there
+                                    if stopGameTimes_indexedBy_stoppedVehicleIds[vehicleId] ~= nil then
+                                        stopGameTimes_indexedBy_stoppedVehicleIds[vehicleId] = _gameTime_msec
+                                    else
+                                        local movePath = api.engine.getComponent(vehicleId, api.type.ComponentType.MOVE_PATH)
+                                        -- at this point, the train head might well be past the intersection.
+                                        for p = movePath.dyn.pathPos.edgeIndex + 1, #movePath.path.edges, 1 do
+                                            -- if the train is heading for the intersection, and not merely transiting on the give-way bit...
+                                            if movePath.path.edges[p].edgeId.entity == bitBehindIntersection.inEdgeId then
+                                                for pp = p, movePath.dyn.pathPos.edgeIndex + 1, -1 do
+                                                    local currentMovePathBit = movePath.path.edges[pp]
+                                                    -- the belly of the train has not passed the intersection yet
+                                                    if currentMovePathBit.edgeId.entity == edgeIdGivingWay then
+                                                        -- stop the train if it is heading for the intersection (probably redundant by now)
+                                                        if currentMovePathBit.dir == bitBehindIntersection.isGiveWayEdgeDirTowardsIntersection then
+                                                            if not(api.engine.getComponent(vehicleId, api.type.ComponentType.TRANSPORT_VEHICLE).userStopped) then
+                                                                if isStopAtOnce or (p == pp) then
+                                                                    api.cmd.sendCommand(
+                                                                        api.cmd.make.reverseVehicle(vehicleId),
+                                                                        function()
+                                                                            api.cmd.sendCommand(
+                                                                                api.cmd.make.setUserStopped(vehicleId, true),
+                                                                                api.cmd.sendCommand(api.cmd.make.reverseVehicle(vehicleId))
+                                                                            )
+                                                                        end
+                                                                    )
+                                                                else
+                                                                    api.cmd.sendCommand(api.cmd.make.setUserStopped(vehicleId, true))
+                                                                end
+                                                                logger.print('vehicle ' .. vehicleId .. ' just stopped')
                                                             else
-                                                                api.cmd.sendCommand(api.cmd.make.setUserStopped(vehicleId, true))
+                                                                logger.print('vehicle ' .. vehicleId .. ' already stopped')
                                                             end
-                                                            logger.print('vehicle ' .. vehicleId .. ' just stopped')
+                                                            stopGameTimes_indexedBy_stoppedVehicleIds[vehicleId] = _gameTime_msec
+                                                            break
+                                                        -- ignore trains heading out of the intersection
                                                         else
-                                                            logger.print('vehicle ' .. vehicleId .. ' already stopped')
+                                                            logger.print('vehicle ' .. vehicleId .. ' not stopped coz is heading away from the intersection')
+                                                            break
                                                         end
-                                                        stopGameTimes_indexedBy_stoppedVehicleIds[vehicleId] = _gameTime_msec
-                                                        break
-                                                    -- ignore trains heading out of the intersection
-                                                    else
-                                                        logger.print('vehicle ' .. vehicleId .. ' not stopped coz is heading away from the intersection')
-                                                        break
                                                     end
                                                 end
+                                                break
                                             end
-                                            break
                                         end
                                     end
-
             --[[
                                     local movePath = api.engine.getComponent(vehicleId, api.type.ComponentType.MOVE_PATH)
                                     local reservedToIndex = api.engine.getComponent(vehicleId, api.type.ComponentType.TRAIN).reservedTo
