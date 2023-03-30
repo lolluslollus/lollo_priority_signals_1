@@ -527,10 +527,10 @@ funcs.getNextIntersectionBehind = function(signalId, prioritySignalIds_indexed)
     -- if the priority signal follows a station, check the whole stretch of track in the station.
     -- This way, any train of any length leaving the station will have priority.
     -- This ensures that a priority train gets priority as soon as it starts moving out of a station.
-    if (intersectionProps.isIntersectionFound or intersectionProps.isPrioritySignalFound) and constants.maxNSegmentsBeforePriorityLight > 1 then
+    if (intersectionProps.isIntersectionFound or intersectionProps.isPrioritySignalFound) and constants.maxNSegmentsBeforePrioritySignal > 1 then
         startNodeId = _isSignalAgainst and _signalBaseEdge.node1 or _signalBaseEdge.node0
         local precedingEdgeProps = _findPrecedingPriorityEdgeId(_signalEdgeId, _signalBaseEdge, startNodeId, {})
-        count, _maxCount = 1, constants.maxNSegmentsBeforePriorityLight
+        count, _maxCount = 1, constants.maxNSegmentsBeforePrioritySignal
         local precedingPriorityEdgeIds = {} -- set it here to leave out _signalEdgeId, which is already in.
         local isEdgeFrozenInStation, wasEdgeFrozenInStation = false, false
         while precedingEdgeProps.isGoAhead and (count <= _maxCount or isEdgeFrozenInStation) do
@@ -551,7 +551,7 @@ end
 ---@param bitsBeforeIntersection_indexedBy_intersectionNodeId_inEdgeId table<integer, table<integer, {isInEdgeDirTowardsIntersection: boolean, priorityEdgeIds: integer[], outerSignalId: integer}>>
 ---@param prioritySignalIds_indexed table<integer, boolean>
 ---@return table<integer, table<integer, {inEdgeId: integer, isGiveWayEdgeDirTowardsIntersection: boolean, isInEdgeDirTowardsIntersection: boolean, nodeIdTowardsIntersection: integer}>> -- intersection node id, edgeId that gives way, its direction, nodeId towards intersection
-funcs.getNextLightsOrStations = function(bitsBeforeIntersection_indexedBy_intersectionNodeId_inEdgeId, prioritySignalIds_indexed)
+funcs.getGiveWaySignalsOrStations = function(bitsBeforeIntersection_indexedBy_intersectionNodeId_inEdgeId, prioritySignalIds_indexed)
     local bitsBehindIntersection_indexedBy_intersectionNodeId_edgeIdGivingWay = {}
 
     local _addEdgeGivingWay = function(edgeIdGivingWay, baseEdge, nodeIdTowardsIntersection, intersectionNodeId, inEdgeId, isInEdgeDirTowardsIntersection)
