@@ -27,6 +27,8 @@ If you place no ordinary signals or stations on one branch, or you place them to
             ["Signal_Name"] = "Priority Path Signal",
             ["ThisIsAPrioritySignal"] = "This is a priority signal",
             ["WarningWindowTitle"] = "Warning",
+            -- categories
+            ["priority-signals"] = "Priority Signals",
         },
     }
 end

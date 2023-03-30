@@ -93,6 +93,7 @@ function data()
                 yearFrom = 0,
                 yearTo = 1925,
             },
+            category = {categories = {'priority-signals'}},
             cost = {
                 price = 3000,
             },
