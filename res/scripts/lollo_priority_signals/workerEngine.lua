@@ -35,8 +35,8 @@ local _utils = {
                 -- if the train has not been stopped (I don't know what enum this is, it is not api.type.enum.TransportVehicleState)
                 -- if it is at terminal, the state is 3
                 -- if the user stops a train, its movePath will shorten as the train halts, to only include the edges (or expanded nodes) occupied by the train
-                -- if isGetStoppedVehicles or movePath.state ~= 2 then
-                if isGetStoppedVehicles or movePath.dyn.speed > 0 then -- this should save us from long-lasting gridlocks
+                if isGetStoppedVehicles or movePath.state ~= 2 then -- this may cause long-lasting gridlocks
+                -- if isGetStoppedVehicles or movePath.dyn.speed > 0 then -- this may fail to give priority to the second fast train waiting behind the first
                     for p = movePath.dyn.pathPos.edgeIndex + 1, #movePath.path.edges, 1 do
                         local currentMovePathBit = movePath.path.edges[p]
                         -- logger.print('currentMovePathBit =') logger.debugPrint(currentMovePathBit)
@@ -60,9 +60,6 @@ local _utils = {
         return hasRecords, results_indexed
     end,
     _isAnyTrainBoundForEdgeOrNode = function(vehicleIds_indexed, edgeOrNodeId)
-        -- in the following, false means "only occupied now", true means "occupied recently, now or soon"
-        -- "recently" and "soon" mean "since a vehicle left the last station and before it reaches the next"
-        -- It works with edges and with intersection nodes.
         local vehicleIdsBoundForEdgeOrNode = api.engine.system.transportVehicleSystem.getVehicles({edgeOrNodeId}, true)
         for _, vehicleId in pairs(vehicleIdsBoundForEdgeOrNode) do
             if vehicleIds_indexed[vehicleId] then
@@ -253,17 +250,17 @@ return {
 
                 for intersectionNodeId, bitsBeforeIntersection_indexedBy_inEdgeId in pairs(bitsBeforeIntersection_indexedBy_intersectionNodeId_inEdgeId) do
                     logger.print('intersectionNodeId = ' .. intersectionNodeId .. '; bitsBeforeIntersection_indexedBy_inEdgeId =') logger.debugPrint(bitsBeforeIntersection_indexedBy_inEdgeId)
-                    local hasIncomingPriorityVehicles, priorityVehicleIds_moving = _utils._getPriorityVehicleIds(bitsBeforeIntersection_indexedBy_inEdgeId)
-                    logger.print('priorityVehicleIds_moving =') logger.debugPrint(priorityVehicleIds_moving)
+                    local hasIncomingPriorityVehicles, priorityVehicleIds = _utils._getPriorityVehicleIds(bitsBeforeIntersection_indexedBy_inEdgeId)
+                    logger.print('priorityVehicleIds =') logger.debugPrint(priorityVehicleIds)
                     if hasIncomingPriorityVehicles then
                         for edgeIdGivingWay, bitBehindIntersection in pairs(bitsBehindIntersection_indexedBy_intersectionNodeId_inEdgeId[intersectionNodeId]) do
                             print('edgeIdGivingWay = ' .. edgeIdGivingWay) -- edgeIdGivingWay = 25624
                             -- avoid gridlocks: do not stop a vehicle that must give way if it is on the path of a priority vehicle
-                            if not(_utils._isAnyTrainBoundForEdgeOrNode(priorityVehicleIds_moving, edgeIdGivingWay))
+                            if not(_utils._isAnyTrainBoundForEdgeOrNode(priorityVehicleIds, edgeIdGivingWay))
                             --[[
                                 LOLLO TODO if I have a cross, I should check the nodes, the edges won't do.
                                 The following only works if the ordinary signal is far enough from the intersection, otherwise you get gridlocks; this hampers usability.
-                            -- and not(_utils._isAnyTrainBoundForEdgeOrNode(priorityVehicleIds_moving, bitBehindIntersection.nodeIdTowardsIntersection))
+                            -- and not(_utils._isAnyTrainBoundForEdgeOrNode(priorityVehicleIds, bitBehindIntersection.nodeIdTowardsIntersection))
                                 Instead, if the slow train is heading for the same node as the priority train, we stop the slow train abruptly.
                                 This might still cause some gridlocks: check it.
                             ]]
@@ -272,43 +269,12 @@ return {
                                 -- See above about usability and gridlocks
                                 -- After the priority train has come to a halt, the routine won't find it anymore and the slow train should restart. Still stupid, but better.
                                 -- For now, I go safe and stop at once with crossings (not switches):
-                                local isStopAtOnce = _utils._isAnyTrainBoundForEdgeOrNode(priorityVehicleIds_moving, bitBehindIntersection.nodeIdTowardsIntersection)
+                                local isStopAtOnce = _utils._isAnyTrainBoundForEdgeOrNode(priorityVehicleIds, bitBehindIntersection.nodeIdTowardsIntersection)
                                 -- logger.print('isStopAtOnce = ' .. tostring(isStopAtOnce))
-                                -- In the following, false means "only occupied now", true means "occupied recently, now or soon"
-                                -- "recently" and "soon" mean "since a vehicle left the last station and before it reaches the next"
-                                -- It works with edges and with intersection nodes.
-                                -- It returns the ids of trains, any part of which occupies any part of the edges.
                                 local vehicleIdsNearGiveWaySignals = api.engine.system.transportVehicleSystem.getVehicles({edgeIdGivingWay}, false)
                                 logger.print('vehicleIdsNearGiveWaySignals =') logger.debugPrint(vehicleIdsNearGiveWaySignals)
                                 for _, vehicleId in pairs(vehicleIdsNearGiveWaySignals) do
-                                    -- LOLLO TODO check this with a train, which is much longer than the 
-                                    -- edge with the yield signal:
-                                    -- the train stops when it's head is far past the signal,
-                                    -- if another train enters the priority block.
-                                    -- Instead, it should stop earlier or proceed.
-                                    -- This happens with a cross and possibly with a switch.
-                                    --[[
-                                    -- movePath.dyn.pathPos.edgeIndex + 1 is where the centre of the train is, not its head.
-                                    movePath also has
-                                    movePath.path.endOffset = 7
-                                    movePath.path.terminalDecisionOffset = 15
-                                    but they seem useless
-
-                                    api.engine.getComponent(vehicleId, api.type.ComponentType.TRAIN)
-                                    {
-                                    vehicles = {
-                                        [1] = 28625,
-                                        [2] = 28708,
-                                        [3] = 28933,
-                                    },
-                                    -- these are the path.edges where this train has reserved a path
-                                    reservedFrom = 10,
-                                    reservedTo = 24, -- same base as MOVE_PATH
-                                    }
-                                ]]
-
                                     local movePath = api.engine.getComponent(vehicleId, api.type.ComponentType.MOVE_PATH)
-                                    -- movePath.dyn.pathPos.edgeIndex + 1 is where the centre of the train is, not its head.
                                     -- at this point, the train head might well be past the intersection.
                                     for p = movePath.dyn.pathPos.edgeIndex + 1, #movePath.path.edges, 1 do
                                         -- if the train is heading for the intersection, and not merely transiting on the give-way bit...
@@ -360,7 +326,7 @@ return {
                                         -- stop trains heading for the intersection
                                         if headReservedMovePathBit.dir == bitBehindIntersection.isGiveWayEdgeDirTowardsIntersection then
                                             if not(api.engine.getComponent(vehicleId, api.type.ComponentType.TRANSPORT_VEHICLE).userStopped) then
-                                                local isStopAtOnce = _utils._isAnyTrainBoundForEdgeOrNode(priorityVehicleIds_moving, bitBehindIntersection.nodeIdTowardsIntersection)
+                                                local isStopAtOnce = _utils._isAnyTrainBoundForEdgeOrNode(priorityVehicleIds, bitBehindIntersection.nodeIdTowardsIntersection)
                                                 logger.print('isStopAtOnce = ' .. tostring(isStopAtOnce))
                 
                                                 if isStopAtOnce then
