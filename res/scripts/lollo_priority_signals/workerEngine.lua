@@ -16,6 +16,7 @@ local bitsBehindIntersection_indexedBy_intersectionNodeId_inEdgeId = {}
 local stopGameTimes_indexedBy_stoppedVehicleIds = {}
 
 local _utils = {
+    ---only reliable with trains that are not user-stopped
     ---@param bitsBeforeIntersection_indexedBy_inEdgeId table<integer, { isInEdgeDirTowardsIntersection: boolean, priorityEdgeIds: integer[] }>
     ---@param isGetStoppedVehicles? boolean also get stopped vehicles, useful for testing
     ---@return boolean
@@ -59,6 +60,10 @@ local _utils = {
         end
         return hasRecords, results_indexed
     end,
+    ---only reliable with trains that are not user-stopped
+    ---@param vehicleIds_indexed table<integer, boolean>
+    ---@param edgeOrNodeId integer
+    ---@return boolean
     _isAnyTrainBoundForEdgeOrNode = function(vehicleIds_indexed, edgeOrNodeId)
         local vehicleIdsBoundForEdgeOrNode = api.engine.system.transportVehicleSystem.getVehicles({edgeOrNodeId}, true)
         for _, vehicleId in pairs(vehicleIdsBoundForEdgeOrNode) do
@@ -274,7 +279,10 @@ return {
                                 local vehicleIdsNearGiveWaySignals = api.engine.system.transportVehicleSystem.getVehicles({edgeIdGivingWay}, false)
                                 logger.print('vehicleIdsNearGiveWaySignals =') logger.debugPrint(vehicleIdsNearGiveWaySignals)
                                 for _, vehicleId in pairs(vehicleIdsNearGiveWaySignals) do
-                                    -- avoid lurching: if a train is stopped and is near the intersection, leave it there
+                                    -- MOVE_PATH and getVehicles change when a train is user-stopped:
+                                    -- uncovered edges disappear and the train tries to restart,
+                                    -- then the next tick will stop it again - or maybe not.
+                                    -- to avoid this lurching, if a train is stopped and is near the give-way signal, we just leave it there
                                     if stopGameTimes_indexedBy_stoppedVehicleIds[vehicleId] ~= nil then
                                         stopGameTimes_indexedBy_stoppedVehicleIds[vehicleId] = _gameTime_msec
                                     else
