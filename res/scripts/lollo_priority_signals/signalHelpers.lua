@@ -551,10 +551,11 @@ end
 ---@param bitsBeforeIntersection_indexedBy_intersectionNodeId_inEdgeId table<integer, table<integer, {isInEdgeDirTowardsIntersection: boolean, priorityEdgeIds: integer[], outerSignalId: integer}>>
 ---@param prioritySignalIds_indexed table<integer, boolean>
 ---@return table<integer, table<integer, {inEdgeId: integer, isGiveWayEdgeDirTowardsIntersection: boolean, isInEdgeDirTowardsIntersection: boolean, nodeIdTowardsIntersection: integer}>> -- intersection node id, edgeId that gives way, its direction, nodeId towards intersection
+---@return table<integer, {inEdgeId: integer, intersectionNodeId: integer, isGiveWayEdgeDirTowardsIntersection: boolean, isInEdgeDirTowardsIntersection: boolean, nodeIdTowardsIntersection: integer}[]> -- edgeId that gives way, its direction, nodeId towards intersection
 funcs.getGiveWaySignalsOrStations = function(bitsBeforeIntersection_indexedBy_intersectionNodeId_inEdgeId, prioritySignalIds_indexed)
     local recursiveFuncs
     local bitsBehindIntersection_indexedBy_intersectionNodeId_edgeIdGivingWay = {}
-    -- local bitsBehindIntersection_indexedBy_edgeIdGivingWay = {} -- new
+    local bitsBehindIntersection_indexedBy_edgeIdGivingWay = {} -- new
 
     local _addEdgeGivingWay = function(edgeIdGivingWay, baseEdge, nodeIdTowardsIntersection, intersectionNodeId, inEdgeId, isInEdgeDirTowardsIntersection)
         logger.print('_addEdgeGivingWay starting, edgeIdGivingWay = ' .. edgeIdGivingWay)
@@ -573,6 +574,27 @@ funcs.getGiveWaySignalsOrStations = function(bitsBeforeIntersection_indexedBy_in
                 isInEdgeDirTowardsIntersection = isInEdgeDirTowardsIntersection,
                 nodeIdTowardsIntersection = nodeIdTowardsIntersection,
             }
+        end
+        if not(bitsBehindIntersection_indexedBy_edgeIdGivingWay[edgeIdGivingWay]) then
+            bitsBehindIntersection_indexedBy_edgeIdGivingWay[edgeIdGivingWay] =
+            {{
+                inEdgeId = inEdgeId,
+                intersectionNodeId = intersectionNodeId,
+                isGiveWayEdgeDirTowardsIntersection = baseEdge.node1 == nodeIdTowardsIntersection,
+                isInEdgeDirTowardsIntersection = isInEdgeDirTowardsIntersection,
+                nodeIdTowardsIntersection = nodeIdTowardsIntersection,
+            }}
+        else
+            table.insert(
+                bitsBehindIntersection_indexedBy_edgeIdGivingWay[edgeIdGivingWay],
+                {
+                    inEdgeId = inEdgeId,
+                    intersectionNodeId = intersectionNodeId,
+                    isGiveWayEdgeDirTowardsIntersection = baseEdge.node1 == nodeIdTowardsIntersection,
+                    isInEdgeDirTowardsIntersection = isInEdgeDirTowardsIntersection,
+                    nodeIdTowardsIntersection = nodeIdTowardsIntersection,
+                }
+            )
         end
     end
     recursiveFuncs = {
@@ -682,7 +704,7 @@ funcs.getGiveWaySignalsOrStations = function(bitsBeforeIntersection_indexedBy_in
         coroutine.yield()
     end
 
-    return bitsBehindIntersection_indexedBy_intersectionNodeId_edgeIdGivingWay
+    return bitsBehindIntersection_indexedBy_intersectionNodeId_edgeIdGivingWay, bitsBehindIntersection_indexedBy_edgeIdGivingWay
 end
 
 return funcs
