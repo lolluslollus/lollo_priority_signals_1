@@ -552,7 +552,9 @@ end
 ---@param prioritySignalIds_indexed table<integer, boolean>
 ---@return table<integer, table<integer, {inEdgeId: integer, isGiveWayEdgeDirTowardsIntersection: boolean, isInEdgeDirTowardsIntersection: boolean, nodeIdTowardsIntersection: integer}>> -- intersection node id, edgeId that gives way, its direction, nodeId towards intersection
 funcs.getGiveWaySignalsOrStations = function(bitsBeforeIntersection_indexedBy_intersectionNodeId_inEdgeId, prioritySignalIds_indexed)
+    local recursiveFuncs
     local bitsBehindIntersection_indexedBy_intersectionNodeId_edgeIdGivingWay = {}
+    -- local bitsBehindIntersection_indexedBy_edgeIdGivingWay = {} -- new
 
     local _addEdgeGivingWay = function(edgeIdGivingWay, baseEdge, nodeIdTowardsIntersection, intersectionNodeId, inEdgeId, isInEdgeDirTowardsIntersection)
         logger.print('_addEdgeGivingWay starting, edgeIdGivingWay = ' .. edgeIdGivingWay)
@@ -573,109 +575,110 @@ funcs.getGiveWaySignalsOrStations = function(bitsBeforeIntersection_indexedBy_in
             }
         end
     end
-    local _getNext4 = function(edgeId, commonNodeId, inEdgeId, intersectionNodeId, isInEdgeDirTowardsIntersection, count, bitsBeforeIntersection_indexedBy_inEdgeId)
-        logger.print('_getNext4 starting, edgeId = ' .. edgeId .. ', commonNodeId = ' .. commonNodeId)
-        -- logger.print('bitsBeforeIntersection_indexedBy_inEdgeId[edgeId] =') logger.debugPrint(bitsBeforeIntersection_indexedBy_inEdgeId[edgeId])
-        if bitsBeforeIntersection_indexedBy_inEdgeId[edgeId] ~= nil then
-            -- this edge enters the intersection behind the priority light: if I am here, I have gone too far back
-            logger.print('this edge leads from a priority signal into the intersection')
-            return { isGoAhead = false }
-        end
-        local baseEdge = api.engine.getComponent(edgeId, api.type.ComponentType.BASE_EDGE)
-        if baseEdge.node0 == intersectionNodeId then
-            logger.print('baseEdge.node0 == intersectionNodeId')
-            inEdgeId = edgeId
-            isInEdgeDirTowardsIntersection = false
-        elseif baseEdge.node1 == intersectionNodeId then
-            logger.print('baseEdge.node1 == intersectionNodeId')
-            inEdgeId = edgeId
-            isInEdgeDirTowardsIntersection = true
-        end
+    recursiveFuncs = {
+        getNext4 = function(intersectionNodeId, bitsBeforeIntersection_indexedBy_inEdgeId, edgeId, commonNodeId, inEdgeId, isInEdgeDirTowardsIntersection, count)
+            logger.print('_getNext4 starting, edgeId = ' .. edgeId .. ', commonNodeId = ' .. commonNodeId)
+            -- logger.print('bitsBeforeIntersection_indexedBy_inEdgeId[edgeId] =') logger.debugPrint(bitsBeforeIntersection_indexedBy_inEdgeId[edgeId])
+            if bitsBeforeIntersection_indexedBy_inEdgeId[edgeId] ~= nil then
+                -- this edge enters the intersection behind the priority light: if I am here, I have gone too far back
+                logger.print('this edge leads from a priority signal into the intersection')
+                return { isGoAhead = false }
+            end
+            local baseEdge = api.engine.getComponent(edgeId, api.type.ComponentType.BASE_EDGE)
+            if baseEdge.node0 == intersectionNodeId then
+                logger.print('baseEdge.node0 == intersectionNodeId')
+                inEdgeId = edgeId
+                isInEdgeDirTowardsIntersection = false
+            elseif baseEdge.node1 == intersectionNodeId then
+                logger.print('baseEdge.node1 == intersectionNodeId')
+                inEdgeId = edgeId
+                isInEdgeDirTowardsIntersection = true
+            end
 
-        local signalIdsInEdge = funcs.getSignalIds(baseEdge)
-        if #signalIdsInEdge > 0 then -- this is it
-            logger.print('this edge has signals')
-            -- get out if there is a priority signal on this edge, you don't want to compete.
-            -- If there are more signals on the same edge, tough, get out anyway.
-            for _, signalId in pairs(signalIdsInEdge) do
-                if prioritySignalIds_indexed[signalId] then
-                    logger.print('one of these signals has priority, don\'t want to compete, leaving')
-                    return { isGoAhead = false }
+            local signalIdsInEdge = funcs.getSignalIds(baseEdge)
+            if #signalIdsInEdge > 0 then -- this is it
+                logger.print('this edge has signals')
+                -- get out if there is a priority signal on this edge, you don't want to compete.
+                -- If there are more signals on the same edge, tough, get out anyway.
+                for _, signalId in pairs(signalIdsInEdge) do
+                    if prioritySignalIds_indexed[signalId] then
+                        logger.print('one of these signals has priority, don\'t want to compete, leaving')
+                        return { isGoAhead = false }
+                    end
+                end
+                -- check if the intersection is reachable from both ends of the edge, there could be a light blocking it or a cross instead of a switch
+                -- You might check this before checking the lights, and leave if isPath is false LOLLO TODO check if it is faster that way
+                if funcs.getIsPathFromEdgeToNode(edgeId, intersectionNodeId, constants.maxDistanceFromIntersection) then
+                    _addEdgeGivingWay(edgeId, baseEdge, commonNodeId, intersectionNodeId, inEdgeId, isInEdgeDirTowardsIntersection)
+                end
+                return {
+                    inEdgeId = inEdgeId,
+                    isGoAhead = false,
+                    isInEdgeDirTowardsIntersection = isInEdgeDirTowardsIntersection
+                }
+            elseif funcs.isEdgeFrozenInStationOrDepot_FAST(edgeId) then -- station
+                logger.print('this edge is frozen in a station or a depot')
+                -- check if the intersection is reachable from both ends of the edge, there could be a light blocking it or a cross instead of a switch
+                if funcs.getIsPathFromEdgeToNode(edgeId, intersectionNodeId, constants.maxDistanceFromIntersection) then
+                    _addEdgeGivingWay(edgeId, baseEdge, commonNodeId, intersectionNodeId, inEdgeId, isInEdgeDirTowardsIntersection)
+                end
+                return {
+                    inEdgeId = inEdgeId,
+                    isGoAhead = false,
+                    isInEdgeDirTowardsIntersection = isInEdgeDirTowardsIntersection
+                }
+            else -- go ahead with the next edge(s)
+                if baseEdge.node0 ~= commonNodeId and baseEdge.node1 ~= commonNodeId then
+                    logger.warn('baseEdge.node0 ~= commonNodeId and baseEdge.node1 ~= commonNodeId')
+                    return {
+                        inEdgeId = inEdgeId,
+                        isGoAhead = false,
+                        isInEdgeDirTowardsIntersection = isInEdgeDirTowardsIntersection
+                    }
+                end
+                if count > 1 and (baseEdge.node0 == intersectionNodeId or baseEdge.node1 == intersectionNodeId) then
+                    logger.print('going back, leave this branch')
+                    return {
+                        inEdgeId = inEdgeId,
+                        isGoAhead = false,
+                        isInEdgeDirTowardsIntersection = isInEdgeDirTowardsIntersection
+                    }
+                end
+                logger.print('need to look farther')
+                return {
+                    inEdgeId = inEdgeId,
+                    isGoAhead = true,
+                    isInEdgeDirTowardsIntersection = isInEdgeDirTowardsIntersection,
+                    newNodeId = baseEdge.node0 == commonNodeId and baseEdge.node1 or baseEdge.node0
+                }
+            end
+        end,
+        getNext3 = function(intersectionNodeId, bitsBeforeIntersection_indexedBy_inEdgeId, edgeId, commonNodeId, inEdgeId, isInEdgeDirTowardsIntersection, count)
+            logger.print('_getNext3 starting, edgeId = ' .. edgeId .. ', commonNodeId = ' .. commonNodeId)
+            local next = recursiveFuncs.getNext4(intersectionNodeId, bitsBeforeIntersection_indexedBy_inEdgeId, edgeId, commonNodeId, inEdgeId, isInEdgeDirTowardsIntersection, count)
+            if next.isGoAhead then
+                if count < constants.maxNSegmentsBehindIntersection then
+                    local connectedEdgeIds = funcs.getConnectedEdgeIdsExceptOne(edgeId, next.newNodeId)
+                    recursiveFuncs.getNext2(intersectionNodeId, bitsBeforeIntersection_indexedBy_inEdgeId, connectedEdgeIds, next.newNodeId, next.inEdgeId, next.isInEdgeDirTowardsIntersection, count)
+                    logger.print('count = ' .. count)
+                else
+                    logger.print('too many attempts, leaving')
                 end
             end
-            -- check if the intersection is reachable from both ends of the edge, there could be a light blocking it or a cross instead of a switch
-            -- You might check this before checking the lights, and leave if isPath is false LOLLO TODO check if it is faster that way
-            if funcs.getIsPathFromEdgeToNode(edgeId, intersectionNodeId, constants.maxDistanceFromIntersection) then
-                _addEdgeGivingWay(edgeId, baseEdge, commonNodeId, intersectionNodeId, inEdgeId, isInEdgeDirTowardsIntersection)
+        end,
+        getNext2 = function(intersectionNodeId, bitsBeforeIntersection_indexedBy_inEdgeId, connectedEdgeIds, commonNodeId, inEdgeId, isInEdgeDirTowardsIntersection, count)
+            logger.print('_getNext2 starting, commonNodeId = ' .. commonNodeId .. ', connectedEdgeIds =') logger.debugPrint(connectedEdgeIds)
+            count = count + 1
+            for _, edgeId in pairs(connectedEdgeIds) do
+                recursiveFuncs.getNext3(intersectionNodeId, bitsBeforeIntersection_indexedBy_inEdgeId, edgeId, commonNodeId, inEdgeId, isInEdgeDirTowardsIntersection, count)
             end
-            return {
-                inEdgeId = inEdgeId,
-                isGoAhead = false,
-                isInEdgeDirTowardsIntersection = isInEdgeDirTowardsIntersection
-            }
-        elseif funcs.isEdgeFrozenInStationOrDepot_FAST(edgeId) then -- station
-            logger.print('this edge is frozen in a station or a depot')
-            -- check if the intersection is reachable from both ends of the edge, there could be a light blocking it or a cross instead of a switch
-            if funcs.getIsPathFromEdgeToNode(edgeId, intersectionNodeId, constants.maxDistanceFromIntersection) then
-                _addEdgeGivingWay(edgeId, baseEdge, commonNodeId, intersectionNodeId, inEdgeId, isInEdgeDirTowardsIntersection)
-            end
-            return {
-                inEdgeId = inEdgeId,
-                isGoAhead = false,
-                isInEdgeDirTowardsIntersection = isInEdgeDirTowardsIntersection
-            }
-        else -- go ahead with the next edge(s)
-            if baseEdge.node0 ~= commonNodeId and baseEdge.node1 ~= commonNodeId then
-                logger.warn('baseEdge.node0 ~= commonNodeId and baseEdge.node1 ~= commonNodeId')
-                return {
-                    inEdgeId = inEdgeId,
-                    isGoAhead = false,
-                    isInEdgeDirTowardsIntersection = isInEdgeDirTowardsIntersection
-                }
-            end
-            if count > 1 and (baseEdge.node0 == intersectionNodeId or baseEdge.node1 == intersectionNodeId) then
-                logger.print('going back, leave this branch')
-                return {
-                    inEdgeId = inEdgeId,
-                    isGoAhead = false,
-                    isInEdgeDirTowardsIntersection = isInEdgeDirTowardsIntersection
-                }
-            end
-            logger.print('need to look farther')
-            return {
-                inEdgeId = inEdgeId,
-                isGoAhead = true,
-                isInEdgeDirTowardsIntersection = isInEdgeDirTowardsIntersection,
-                newNodeId = baseEdge.node0 == commonNodeId and baseEdge.node1 or baseEdge.node0
-            }
-        end
-    end
-
-    local _getNext3 = function(edgeId, commonNodeId, inEdgeId, intersectionNodeId, isInEdgeDirTowardsIntersection, getNext2Func, count, bitsBeforeIntersection_indexedBy_inEdgeId)
-        logger.print('_getNext3 starting, edgeId = ' .. edgeId .. ', commonNodeId = ' .. commonNodeId)
-        local next = _getNext4(edgeId, commonNodeId, inEdgeId, intersectionNodeId, isInEdgeDirTowardsIntersection, count, bitsBeforeIntersection_indexedBy_inEdgeId)
-        if next.isGoAhead then
-            if count < constants.maxNSegmentsBehindIntersection then
-                local connectedEdgeIds = funcs.getConnectedEdgeIdsExceptOne(edgeId, next.newNodeId)
-                getNext2Func(connectedEdgeIds, next.newNodeId, next.inEdgeId, intersectionNodeId, next.isInEdgeDirTowardsIntersection, getNext2Func, count, bitsBeforeIntersection_indexedBy_inEdgeId)
-                logger.print('count = ' .. count)
-            else
-                logger.print('too many attempts, leaving')
-            end
-        end
-    end
-    local _getNext2 = function(connectedEdgeIds, commonNodeId, inEdgeId, intersectionNodeId, isInEdgeDirTowardsIntersection, getNext2Func, count, bitsBeforeIntersection_indexedBy_inEdgeId)
-        logger.print('_getNext2 starting, commonNodeId = ' .. commonNodeId .. ', connectedEdgeIds =') logger.debugPrint(connectedEdgeIds)
-        count = count + 1
-        for _, edgeId in pairs(connectedEdgeIds) do
-            _getNext3(edgeId, commonNodeId, inEdgeId, intersectionNodeId, isInEdgeDirTowardsIntersection, getNext2Func, count, bitsBeforeIntersection_indexedBy_inEdgeId)
-        end
-    end
+        end,
+    }
 
     for intersectionNodeId, bitsBeforeIntersection_indexedBy_inEdgeId in pairs(bitsBeforeIntersection_indexedBy_intersectionNodeId_inEdgeId) do
         local connectedEdgeIds = funcs.getConnectedEdgeIdsExceptSome(bitsBeforeIntersection_indexedBy_inEdgeId, intersectionNodeId)
         logger.print('_getNext1 got intersectionNodeId = ' .. intersectionNodeId .. ', connectedEdgeIds =') logger.debugPrint(connectedEdgeIds)
-        _getNext2(connectedEdgeIds, intersectionNodeId, nil, intersectionNodeId, nil, _getNext2, 0, bitsBeforeIntersection_indexedBy_inEdgeId)
+        recursiveFuncs.getNext2(intersectionNodeId, bitsBeforeIntersection_indexedBy_inEdgeId, connectedEdgeIds, intersectionNodeId, nil, nil, 0)
         coroutine.yield()
     end
 
