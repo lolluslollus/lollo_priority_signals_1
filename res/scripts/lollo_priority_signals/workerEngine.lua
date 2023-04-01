@@ -10,11 +10,11 @@ local _mTexts = { }
 ---nodeId, inEdgeId, props
 ---@type table<integer, table<integer, {isInEdgeDirTowardsIntersection: boolean, priorityEdgeIds: integer[], outerSignalId: integer}>>
 local _mBitsBeforeIntersection_indexedBy_intersectionNodeId_inEdgeId = {}
-local _mBitsBehindIntersection_indexedBy_intersectionNodeId_edgeIdGivingWay = {}
+-- local _mBitsBehindIntersection_indexedBy_intersectionNodeId_edgeIdGivingWay = {}
 ---@type table<integer, {inEdgeId: integer, intersectionNodeId: integer, isGiveWayEdgeDirTowardsIntersection: boolean, isInEdgeDirTowardsIntersection: boolean, nodeIdTowardsIntersection: integer}[]> -- edgeId that gives way, its direction, nodeId towards intersection
 local _mBitsBehindIntersection_indexedBy_edgeIdGivingWay = {}
 ---@type table<integer, integer[]>
-local _mInEdgeIdsBehindIntersections_indexedBy_edgeIdGivingWay = {}
+-- local _mInEdgeIdsBehindIntersections_indexedBy_edgeIdGivingWay = {}
 ---@type table<integer, integer[]>
 local _mIntersectionNodeIds_indexedBy_edgeIdGivingWay = {}
 ---vehicleId, props
@@ -108,13 +108,15 @@ local _updateGraph = function()
     logger.print('after attaching the chains, bitsBeforeIntersection_indexedBy_intersectionNodeId_inEdgeId =') logger.debugPrint(bitsBeforeIntersection_indexedBy_intersectionNodeId_inEdgeId)
     coroutine.yield()
 
-    local bitsBehindIntersection_indexedBy_intersectionNodeId_edgeIdGivingWay, bitsBehindIntersection_indexedBy_edgeIdGivingWay
+    local --bitsBehindIntersection_indexedBy_intersectionNodeId_edgeIdGivingWay, 
+    bitsBehindIntersection_indexedBy_edgeIdGivingWay
      = signalHelpers.getGiveWaySignalsOrStations(bitsBeforeIntersection_indexedBy_intersectionNodeId_inEdgeId, prioritySignalIds_indexed)
-    logger.print('bitsBehindIntersection_indexedBy_intersectionNodeId_edgeIdGivingWay =') logger.debugPrint(bitsBehindIntersection_indexedBy_intersectionNodeId_edgeIdGivingWay)
+    logger.print('bitsBehindIntersection_indexedBy_edgeIdGivingWay =') logger.debugPrint(bitsBehindIntersection_indexedBy_edgeIdGivingWay)
+
     local inEdgeIdsBehindIntersections_indexedBy_edgeIdGivingWay = {}
     local intersectionNodeIds_indexedBy_edgeIdGivingWay = {}
-    for intersectionNodeId, _bitsBehindIntersection_indexedBy_edgeIdGivingWay in pairs(bitsBehindIntersection_indexedBy_intersectionNodeId_edgeIdGivingWay) do
-        for edgeIdGivingWay, bitBehindIntersection in pairs(_bitsBehindIntersection_indexedBy_edgeIdGivingWay) do
+    -- for intersectionNodeId, _bitsBehindIntersection_indexedBy_edgeIdGivingWay in pairs(bitsBehindIntersection_indexedBy_intersectionNodeId_edgeIdGivingWay) do
+        for edgeIdGivingWay, bitBehindIntersection in pairs(bitsBehindIntersection_indexedBy_edgeIdGivingWay) do
             if not(inEdgeIdsBehindIntersections_indexedBy_edgeIdGivingWay[edgeIdGivingWay]) then
                 inEdgeIdsBehindIntersections_indexedBy_edgeIdGivingWay[edgeIdGivingWay] = {bitBehindIntersection.inEdgeId}
             else
@@ -127,15 +129,15 @@ local _updateGraph = function()
                 table.insert(intersectionNodeIds_indexedBy_edgeIdGivingWay[edgeIdGivingWay], intersectionNodeId)
             end
         end
-    end
+    -- end
     coroutine.yield()
     logger.print('inEdgeIdsBehindIntersections_indexedBy_edgeIdGivingWay =') logger.debugPrint(inEdgeIdsBehindIntersections_indexedBy_edgeIdGivingWay)
     logger.print('intersectionNodeIds_indexedBy_edgeIdGivingWay =') logger.debugPrint(intersectionNodeIds_indexedBy_edgeIdGivingWay)
 
     _mBitsBeforeIntersection_indexedBy_intersectionNodeId_inEdgeId = bitsBeforeIntersection_indexedBy_intersectionNodeId_inEdgeId
-    _mBitsBehindIntersection_indexedBy_intersectionNodeId_edgeIdGivingWay = bitsBehindIntersection_indexedBy_intersectionNodeId_edgeIdGivingWay
+    -- _mBitsBehindIntersection_indexedBy_intersectionNodeId_edgeIdGivingWay = bitsBehindIntersection_indexedBy_intersectionNodeId_edgeIdGivingWay
     _mBitsBehindIntersection_indexedBy_edgeIdGivingWay = bitsBehindIntersection_indexedBy_edgeIdGivingWay
-    _mInEdgeIdsBehindIntersections_indexedBy_edgeIdGivingWay = inEdgeIdsBehindIntersections_indexedBy_edgeIdGivingWay
+    -- _mInEdgeIdsBehindIntersections_indexedBy_edgeIdGivingWay = inEdgeIdsBehindIntersections_indexedBy_edgeIdGivingWay
     _mIntersectionNodeIds_indexedBy_edgeIdGivingWay = intersectionNodeIds_indexedBy_edgeIdGivingWay
     if logger.isExtendedLog() then
         local executionTime = math.ceil((os.clock() - _startTick) * 1000)
@@ -288,8 +290,8 @@ local _utils = {
 }
 return {
     update = function()
-        local state = stateHelpers.getState()
-        if not(state.is_on) then return end
+        local _state = stateHelpers.getState()
+        if not(_state.is_on) then return end
 
         local _gameTime_msec = api.engine.getComponent(api.engine.util.getWorld(), api.type.ComponentType.GAME_TIME).gameTime
         if not(_gameTime_msec) then logger.err('update() cannot get time') return end
@@ -299,11 +301,11 @@ return {
                 local _startTick = 0
                 if logger.isExtendedLog() then _startTick = os.clock() end
 
-                local _gameTime_sec = math.floor(_gameTime_msec / 1000)
-                -- leave if paused
-                if _gameTime_sec == state.world_time_sec then return end
+                local _gameTime_sec = math.floor(_gameTime_msec / constants.refreshGraphPeriodMsec)
+                -- leave if paused or less than a second elapsed since last time
+                -- if _gameTime_sec == _state.game_time_sec then return end
                 -- remember game time for next cycle, its only purpose is to leave while paused
-                state.world_time_sec = _gameTime_sec
+                _state.game_time_sec = _gameTime_sec
 
                 ---@type table<integer, integer> --signalId, edgeId
                 local _edgeObject2EdgeMap = api.engine.system.streetSystem.getEdgeObject2EdgeMap()
@@ -322,16 +324,19 @@ return {
                 -- end -- update graph
 
                 local incomingPriorityVehicles_indexedBy_intersectionNodeId_vehicleId = {}
-                for intersectionNodeId, bitBeforeIntersection_indexedBy_inEdgeId in pairs(_mBitsBeforeIntersection_indexedBy_intersectionNodeId_inEdgeId) do
-                    local hasIncomingPriorityVehicles, incomingPriorityVehicleIds = _utils.getPriorityVehicleIds(bitBeforeIntersection_indexedBy_inEdgeId)
+                for intersectionNodeId, bitsBeforeIntersection_indexedBy_inEdgeId in pairs(_mBitsBeforeIntersection_indexedBy_intersectionNodeId_inEdgeId) do
+                    local hasIncomingPriorityVehicles, incomingPriorityVehicleIds
+                     = _utils.getPriorityVehicleIds(bitsBeforeIntersection_indexedBy_inEdgeId)
                     if hasIncomingPriorityVehicles then
-                        if not(incomingPriorityVehicles_indexedBy_intersectionNodeId_vehicleId[intersectionNodeId]) then incomingPriorityVehicles_indexedBy_intersectionNodeId_vehicleId[intersectionNodeId] = {} end
-                        for _, vehicleId in pairs(incomingPriorityVehicleIds) do
-                            incomingPriorityVehicles_indexedBy_intersectionNodeId_vehicleId[intersectionNodeId][vehicleId] = true                            
+                        if not(incomingPriorityVehicles_indexedBy_intersectionNodeId_vehicleId[intersectionNodeId]) then
+                            incomingPriorityVehicles_indexedBy_intersectionNodeId_vehicleId[intersectionNodeId] = {}
+                        end
+                        for vehicleId, _ in pairs(incomingPriorityVehicleIds) do
+                            incomingPriorityVehicles_indexedBy_intersectionNodeId_vehicleId[intersectionNodeId][vehicleId] = true
                         end
                     end
                     if logger.isExtendedLog() then
-                        logger.print('intersectionNodeId = ' .. intersectionNodeId .. '; bitBeforeIntersection_indexedBy_inEdgeId =') logger.debugPrint(bitBeforeIntersection_indexedBy_inEdgeId)
+                        logger.print('intersectionNodeId = ' .. intersectionNodeId .. '; bitBeforeIntersection_indexedBy_inEdgeId =') logger.debugPrint(bitsBeforeIntersection_indexedBy_inEdgeId)
                         logger.print('incomingPriorityVehicleIds =') logger.debugPrint(incomingPriorityVehicleIds)
                     end
                 end
@@ -342,10 +347,11 @@ return {
                         logger.print('edgeIdGivingWay = ' .. edgeIdGivingWay)
                         logger.print('bitsBehindIntersection = ') logger.debugPrint(bitsBehindIntersection)
                     end
-                    if not(incomingPriorityVehicles_indexedBy_edgeIdGivingWay_vehicleId[edgeIdGivingWay]) then incomingPriorityVehicles_indexedBy_edgeIdGivingWay_vehicleId[edgeIdGivingWay] = {} end
+                    if not(incomingPriorityVehicles_indexedBy_edgeIdGivingWay_vehicleId[edgeIdGivingWay]) then
+                        incomingPriorityVehicles_indexedBy_edgeIdGivingWay_vehicleId[edgeIdGivingWay] = {}
+                    end
                     for _, bitBehindIntersection in pairs(bitsBehindIntersection) do
-                        local incomingPriorityVehicleIds_indexed = incomingPriorityVehicles_indexedBy_intersectionNodeId_vehicleId[bitBehindIntersection.intersectionNodeId]
-                        for vehicleId, _ in pairs(incomingPriorityVehicleIds_indexed or {}) do
+                        for vehicleId, _ in pairs(incomingPriorityVehicles_indexedBy_intersectionNodeId_vehicleId[bitBehindIntersection.intersectionNodeId] or {}) do
                             incomingPriorityVehicles_indexedBy_edgeIdGivingWay_vehicleId[edgeIdGivingWay][vehicleId] = true
                         end
                     end
