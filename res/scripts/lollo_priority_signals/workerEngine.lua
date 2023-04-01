@@ -10,9 +10,11 @@ local _mSignalModelId_EraA
 local _mSignalModelId_EraC
 ---@type table<string, string>
 local _mTexts = { }
----@type number
+---@type integer
 local _mGameTime_msec = 0
----@type number
+---@type integer
+local _mLastGameTime_msec = 0
+---@type integer
 local _mLastRefreshGraph_msec = 0
 
 ---@type bitsBeforeIntersection_indexedBy_intersectionNodeId_inEdgeId
@@ -173,12 +175,10 @@ local _mGetGraphCoroutine, _mStartStopTrainsCoroutine
 local _actions = {
     updateGraph = function()
         local _startTick_sec = os.clock()
-        logger.print('_mGetGraphCoroutine - start updating graph at ' .. tostring(_startTick_sec) .. ' sec')
+        logger.print('< ## _mGetGraphCoroutine - start updating graph at ' .. tostring(_startTick_sec) .. ' sec')
         -- ---@type table<integer, integer> --signalId, edgeId
         -- local _edgeObject2EdgeMap = api.engine.system.streetSystem.getEdgeObject2EdgeMap()
 
-        -- LOLLO TODO see if you can multithread this.
-        -- coroutines hog the lua state coz it waits for them.
         --[[
             LOLLO NOTE one-way lights are read as two-way lights,
             and they don't appear in the menu if they have no two-way counterparts, or if those counterparts have expired.
@@ -283,7 +283,6 @@ local _actions = {
         logger.print('intersectionNodeIds_indexedBy_edgeIdGivingWay =') logger.debugPrint(intersectionNodeIds_indexedBy_edgeIdGivingWay)
 
         -- only change these shared variables when the coroutine that needs them is inactive
-        -- LOLLO TODO check if this works
         while _mStartStopTrainsCoroutine ~= nil and coroutine.status(_mStartStopTrainsCoroutine) ~= 'dead' do
             logger.print('_mStartStopTrainsCoroutine is not dead, waiting')
             coroutine.yield()
@@ -296,19 +295,22 @@ local _actions = {
                 logger.print('_mStartStopTrainsCoroutine is ' .. coroutine.status(_mStartStopTrainsCoroutine) .. ', about to update shared variables')
             end
         end
+
         _mBitsBeforeIntersection_indexedBy_intersectionNodeId_inEdgeId = bitsBeforeIntersection_indexedBy_intersectionNodeId_inEdgeId
         _mBitsBehindIntersection_indexedBy_intersectionNodeId_edgeIdGivingWay = bitsBehindIntersection_indexedBy_intersectionNodeId_edgeIdGivingWay
         _mInEdgeIdsBehindIntersections_indexedBy_edgeIdGivingWay = inEdgeIdsBehindIntersections_indexedBy_edgeIdGivingWay
         _mIntersectionNodeIds_indexedBy_edgeIdGivingWay = intersectionNodeIds_indexedBy_edgeIdGivingWay
+        _mLastRefreshGraph_msec = _mGameTime_msec
+
         if logger.isExtendedLog() then
             local executionTime_msec = math.ceil((os.clock() - _startTick_sec) * 1000)
-            logger.print('_mGetGraphCoroutine - Updating graph took ' .. executionTime_msec .. ' msec')
+            logger.print('> ## _mGetGraphCoroutine - Updating graph took ' .. executionTime_msec .. ' msec')
         end
     end,
     startStopTrains = function()
         local _startTick_sec = os.clock()
-        logger.print('_mStartStopTrainsCoroutine - start work at ' .. tostring(_startTick_sec) .. ' sec')
-error('test error') -- LOLLO TODO what happens if an error occurs in the coroutine? Does it die? I would like it to. This is a test.
+        logger.print('< ## _mStartStopTrainsCoroutine - start work at ' .. tostring(_startTick_sec) .. ' sec')
+        -- error('test error') -- What happens if an error occurs in the coroutine? It dies!
         for intersectionNodeId, bitsBeforeIntersection_indexedBy_inEdgeId in pairs(_mBitsBeforeIntersection_indexedBy_intersectionNodeId_inEdgeId) do
             local hasIncomingPriorityVehicles, incomingPriorityVehicleIds = _utils.getPriorityVehicleIds(bitsBeforeIntersection_indexedBy_inEdgeId)
             if logger.isExtendedLog() then
@@ -436,93 +438,75 @@ error('test error') -- LOLLO TODO what happens if an error occurs in the corouti
 
         if logger.isExtendedLog() then
             local executionTime_msec = math.ceil((os.clock() - _startTick_sec) * 1000)
-            logger.print('_mStartStopTrainsCoroutine - work took ' .. executionTime_msec .. ' msec')
+            logger.print('> ## _mStartStopTrainsCoroutine - work took ' .. executionTime_msec .. ' msec')
         end
     end,
 }
 
 return {
+    -- this can fire a handful times per second
     update = function()
         local state = stateHelpers.getState()
         if not(state.is_on) then return end
 
-        logger.print('workerEngine.update() starting')
+        -- logger.print('#### workerEngine.update() starting at ' .. tostring(os.clock()) .. ' sec')
 
         _mGameTime_msec = api.engine.getComponent(api.engine.util.getWorld(), api.type.ComponentType.GAME_TIME).gameTime
         if not(_mGameTime_msec) then logger.err('update() cannot get time') return end
 
-        -- xpcall(
-        --     function()
-                local _startTick_sec = 0
-                if logger.isExtendedLog() then _startTick_sec = os.clock() end
-
-                if _mGetGraphCoroutine == nil then logger.print('_mGetGraphCoroutine is nil')
-                else logger.print('_mGetGraphCoroutine status is ' .. coroutine.status(_mGetGraphCoroutine))
-                end
-                if _mGetGraphCoroutine == nil
-                or (
-                    coroutine.status(_mGetGraphCoroutine) == 'dead'
-                    and _mGameTime_msec - _mLastRefreshGraph_msec > constants.refreshGraphPauseMsec -- wait a bit before recalculating the graph
-                    and ( -- let startStopTrains run through before recalculating the graph
-                        _mStartStopTrainsCoroutine == nil
-                        or coroutine.status(_mStartStopTrainsCoroutine) == 'dead'
-                    )
+        if _mGameTime_msec ~= _mLastGameTime_msec then -- skip if paused, LOLLO TODO you can make it work while paused if you compare os.clock() instead of gameTime
+            logger.print('_mGameTime_msec = ' .. tostring(_mGameTime_msec) .. ', _mLastRefreshGraph_msec = ' .. tostring(_mLastRefreshGraph_msec))
+            if _mGetGraphCoroutine == nil
+            or (
+                coroutine.status(_mGetGraphCoroutine) == 'dead'
+                and _mGameTime_msec - _mLastRefreshGraph_msec > constants.refreshGraphPauseMsec -- wait a bit before recalculating the graph
+                and ( -- let startStopTrains run through before recalculating the graph
+                    _mStartStopTrainsCoroutine == nil
+                    or coroutine.status(_mStartStopTrainsCoroutine) == 'dead'
                 )
-                then
-                    _mGetGraphCoroutine = coroutine.create(_actions.updateGraph)
-                    logger.print('_mGetGraphCoroutine created')
+            )
+            then
+                _mGetGraphCoroutine = coroutine.create(_actions.updateGraph)
+                logger.print('_mGetGraphCoroutine created')
+            end
+            for _ = 1, constants.numGetGraphCoroutineResumesPerTick, 1 do
+                if coroutine.status(_mGetGraphCoroutine) ~= 'dead' then
+                    local isSuccess, error = coroutine.resume(_mGetGraphCoroutine)
+                    -- if an error occurs in the coroutine, it dies.
+                    if isSuccess then
+                        logger.print('_mGetGraphCoroutine resumed OK')
+                    else
+                        logger.warn('_mGetGraphCoroutine resumed with error') logger.warningDebugPrint(error)
+                    end
+                else -- leave it dead for this tick, everything else will have more resources to run through
+                    logger.print('_mGetGraphCoroutine is dead and not resumed')
+                    break
                 end
-                for _ = 1, constants.numGetGraphCoroutineResumesPerTick, 1 do
-                    if coroutine.status(_mGetGraphCoroutine) ~= 'dead' then
-                        local isSuccess, error = coroutine.resume(_mGetGraphCoroutine)
-                        -- LOLLO TODO what happens if an error occurs in the coroutine? Does it die? I would like it to.
-                        if not(isSuccess) then
-                            logger.warn('_mGetGraphCoroutine resumed with error') logger.warningDebugPrint(error)
-                        else
-                            logger.print('_mGetGraphCoroutine resumed')
-                        end
-                        logger.print('_mGetGraphCoroutine has status ' .. coroutine.status(_mGetGraphCoroutine))
-                    else -- leave it dead for this tick, everything else will have more resources to run through
-                        _mLastRefreshGraph_msec = _mGameTime_msec
-                        logger.print('_mGetGraphCoroutine not resumed, it\'s dead')
-                        break
-                    end
-                end -- update graph
+            end -- update graph
+        end
 
-                if _mGameTime_msec ~= state.gameTime_msec then -- skip if paused
-                    if _mStartStopTrainsCoroutine == nil then logger.print('_mStartStopTrainsCoroutine is nil')
-                    else logger.print('_mStartStopTrainsCoroutine status is ' .. coroutine.status(_mStartStopTrainsCoroutine))
+        if _mGameTime_msec ~= _mLastGameTime_msec then -- skip if paused
+            if _mStartStopTrainsCoroutine == nil or coroutine.status(_mStartStopTrainsCoroutine) == 'dead' then
+                _mStartStopTrainsCoroutine = coroutine.create(_actions.startStopTrains)
+                logger.print('_mStartStopTrainsCoroutine created')
+            end
+            for _ = 1, constants.numStartStopTrainsCoroutineResumesPerTick, 1 do
+                if coroutine.status(_mStartStopTrainsCoroutine) ~= 'dead' then
+                    local isSuccess, error = coroutine.resume(_mStartStopTrainsCoroutine)
+                    -- if an error occurs in the coroutine, it dies: good. Errors can happen whenever the graph is out of date.
+                    if isSuccess then
+                        logger.print('_mStartStopTrainsCoroutine resumed OK')
+                    else
+                        logger.print('_mStartStopTrainsCoroutine resumed with error') logger.debugPrint(error)
                     end
-                    if _mStartStopTrainsCoroutine == nil or coroutine.status(_mStartStopTrainsCoroutine) == 'dead' then
-                        _mStartStopTrainsCoroutine = coroutine.create(_actions.startStopTrains)
-                        logger.print('_mStartStopTrainsCoroutine created')
-                    end
-                    for _ = 1, constants.numStartStopTrainsCoroutineResumesPerTick, 1 do
-                        if coroutine.status(_mStartStopTrainsCoroutine) ~= 'dead' then
-                            local isSuccess, error = coroutine.resume(_mStartStopTrainsCoroutine)
-                            -- LOLLO TODO what happens if an error occurs in the coroutine? Does it die? I would like it to.
-                            if not(isSuccess) then
-                                logger.warn('_mStartStopTrainsCoroutine resumed with error') logger.warningDebugPrint(error)
-                            else
-                                logger.print('_mStartStopTrainsCoroutine resumed')
-                            end
-                            logger.print('_mStartStopTrainsCoroutine has status ' .. coroutine.status(_mStartStopTrainsCoroutine))
-                        else -- leave it dead, giving a chance to the other coroutine to change the shared variables
-                            logger.print('_mStartStopTrainsCoroutine not resumed, it\'s dead')
-                            break
-                        end
-                    end
-                end -- start and stop trains
-
-                if logger.isExtendedLog() then
-                    local executionTime_msec = math.ceil((os.clock() - _startTick_sec) * 1000)
-                    logger.print('doing all took ' .. executionTime_msec .. ' msec')
+                else -- leave it dead, giving a chance to the other coroutine to start and/or to change the shared variables
+                    logger.print('_mStartStopTrainsCoroutine is dead and not resumed')
+                    break
                 end
-        --  end,
-        --     logger.xpErrorHandler
-        -- )
+            end
+        end -- start and stop trains
 
-        state.gameTime_msec = _mGameTime_msec
+        _mLastGameTime_msec = _mGameTime_msec
     end,
     handleEvent = function(src, id, name, args)
         -- if id == 'saveevent' then return end

@@ -1,5 +1,5 @@
 local constants = {
-    refreshGraphPauseMsec = 5000, -- pause N msec between ending a refresh and starting a new one
+    refreshGraphPauseMsec = 2000, -- pause N msec between ending a refresh and starting a new one
 
     maxNChainedPrioritySignalsBeforeIntersection = 4, -- allow adding max N priority signals before an intersection
     maxNSegmentsBeforeIntersection = 16, -- seek intersections max N segments behind priority signal
@@ -8,7 +8,7 @@ local constants = {
     maxDistanceFromIntersection = 500, -- seek edges max 500 m from intersection
 
     numGetGraphCoroutineResumesPerTick = 4,
-    numStartStopTrainsCoroutineResumesPerTick = 10,
+    numStartStopTrainsCoroutineResumesPerTick = 20,
 
     eventId = '__lollo_priority_signals__',
     events = {
