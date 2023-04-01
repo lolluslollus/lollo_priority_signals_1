@@ -1,5 +1,5 @@
 local constants = {
-    refreshGraphPeriodMsec = 5000, -- refresh every 5 seconds
+    refreshGraphPauseMsec = 5000, -- pause N msec between ending a refresh and starting a new one
 
     maxNChainedPrioritySignalsBeforeIntersection = 4, -- allow adding max N priority signals before an intersection
     maxNSegmentsBeforeIntersection = 16, -- seek intersections max N segments behind priority signal

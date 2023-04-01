@@ -3,11 +3,11 @@ local logger = require('lollo_priority_signals.logger')
 local persistent_state = {}
 
 local _initState = function()
-    if persistent_state.game_time_sec == nil then
-        persistent_state.game_time_sec = 0
-    end
-    if persistent_state.game_time_msec == nil then
-        persistent_state.game_time_msec = 0
+    -- if persistent_state.game_time_sec == nil then
+    --     persistent_state.game_time_sec = 0
+    -- end
+    if persistent_state.gameTime_msec == nil then
+        persistent_state.gameTime_msec = 0
     end
 
     if persistent_state.is_on ~= false then
