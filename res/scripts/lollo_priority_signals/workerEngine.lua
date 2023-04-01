@@ -14,8 +14,12 @@ local _mTexts = { }
 local _mGameTime_msec = 0
 ---@type integer
 local _mLastGameTime_msec = 0
----@type integer
-local _mLastRefreshGraph_msec = 0
+---@type number
+local _mSystemTime_msec = 0
+---@type number
+local _mLastRefreshGraph_systemTime_msec = 0
+---@type boolean
+local _mIsGraphDone = false
 
 ---@type bitsBeforeIntersection_indexedBy_intersectionNodeId_inEdgeId
 local _mBitsBeforeIntersection_indexedBy_intersectionNodeId_inEdgeId = {}
@@ -300,11 +304,11 @@ local _actions = {
         _mBitsBehindIntersection_indexedBy_intersectionNodeId_edgeIdGivingWay = bitsBehindIntersection_indexedBy_intersectionNodeId_edgeIdGivingWay
         _mInEdgeIdsBehindIntersections_indexedBy_edgeIdGivingWay = inEdgeIdsBehindIntersections_indexedBy_edgeIdGivingWay
         _mIntersectionNodeIds_indexedBy_edgeIdGivingWay = intersectionNodeIds_indexedBy_edgeIdGivingWay
-        _mLastRefreshGraph_msec = _mGameTime_msec
+        _mLastRefreshGraph_systemTime_msec = os.clock() * 1000
+        _mIsGraphDone = true
 
         if logger.isExtendedLog() then
-            local executionTime_msec = math.ceil((os.clock() - _startTick_sec) * 1000)
-            logger.print('> ## _mGetGraphCoroutine - Updating graph took ' .. executionTime_msec .. ' msec')
+            logger.print('> ## _mGetGraphCoroutine - Updating graph took ' .. math.ceil((os.clock() - _startTick_sec) * 1000) .. ' msec')
         end
     end,
     startStopTrains = function()
@@ -437,8 +441,7 @@ local _actions = {
         end
 
         if logger.isExtendedLog() then
-            local executionTime_msec = math.ceil((os.clock() - _startTick_sec) * 1000)
-            logger.print('> ## _mStartStopTrainsCoroutine - work took ' .. executionTime_msec .. ' msec')
+            logger.print('> ## _mStartStopTrainsCoroutine - work took ' .. math.ceil((os.clock() - _startTick_sec) * 1000) .. ' msec')
         end
     end,
 }
@@ -454,12 +457,14 @@ return {
         _mGameTime_msec = api.engine.getComponent(api.engine.util.getWorld(), api.type.ComponentType.GAME_TIME).gameTime
         if not(_mGameTime_msec) then logger.err('update() cannot get time') return end
 
-        if _mGameTime_msec ~= _mLastGameTime_msec then -- skip if paused, LOLLO TODO you can make it work while paused if you compare os.clock() instead of gameTime
-            logger.print('_mGameTime_msec = ' .. tostring(_mGameTime_msec) .. ', _mLastRefreshGraph_msec = ' .. tostring(_mLastRefreshGraph_msec))
+        _mSystemTime_msec = os.clock() * 1000
+
+        -- if _mGameTime_msec ~= _mLastGameTime_msec then -- skip if paused, for testing
+            logger.print('_mSystemTime_msec = ' .. tostring(_mSystemTime_msec) .. ', _mLastRefreshGraph_systemTime_msec = ' .. tostring(_mLastRefreshGraph_systemTime_msec))
             if _mGetGraphCoroutine == nil
             or (
                 coroutine.status(_mGetGraphCoroutine) == 'dead'
-                and _mGameTime_msec - _mLastRefreshGraph_msec > constants.refreshGraphPauseMsec -- wait a bit before recalculating the graph
+                and _mSystemTime_msec - _mLastRefreshGraph_systemTime_msec > constants.refreshGraphPauseMsec -- wait a bit before recalculating the graph
                 and ( -- let startStopTrains run through before recalculating the graph
                     _mStartStopTrainsCoroutine == nil
                     or coroutine.status(_mStartStopTrainsCoroutine) == 'dead'
@@ -483,9 +488,9 @@ return {
                     break
                 end
             end -- update graph
-        end
+        -- end -- skip if paused, for testing
 
-        if _mGameTime_msec ~= _mLastGameTime_msec then -- skip if paused
+        if _mGameTime_msec ~= _mLastGameTime_msec and _mIsGraphDone then -- skip if paused or graph is missing
             if _mStartStopTrainsCoroutine == nil or coroutine.status(_mStartStopTrainsCoroutine) == 'dead' then
                 _mStartStopTrainsCoroutine = coroutine.create(_actions.startStopTrains)
                 logger.print('_mStartStopTrainsCoroutine created')
