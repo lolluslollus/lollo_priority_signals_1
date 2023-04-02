@@ -187,18 +187,9 @@ local _actions = {
             LOLLO NOTE one-way lights are read as two-way lights,
             and they don't appear in the menu if they have no two-way counterparts, or if those counterparts have expired.
         ]]
-        local allPrioritySignalIds = {
-            table.unpack(signalHelpers.getAllEdgeObjectsWithModelId(_mSignalModelId_EraA)),
-            table.unpack(signalHelpers.getAllEdgeObjectsWithModelId(_mSignalModelId_EraC))
-        }
-        logger.print('allPrioritySignalIds =') logger.debugPrint(allPrioritySignalIds)
-
-        ---@type table<integer, boolean> --signalId, true
-        local prioritySignalIds_indexed = {}
-        for _, signalId in pairs(allPrioritySignalIds) do
-            prioritySignalIds_indexed[signalId] = true -- _edgeObject2EdgeMap[signalId]
-        end
+        local prioritySignalIds_indexed = signalHelpers.getAllEdgeObjectsWithModelIds_indexed(_mSignalModelId_EraA, _mSignalModelId_EraC)
         logger.print('prioritySignalIds_indexed =') logger.debugPrint(prioritySignalIds_indexed)
+        coroutine.yield()
         -- By construction, I cannot have more than one priority signal on any edge.
         -- However, different priority signals might share the same intersection node,
         -- so I have a table of tables.
@@ -481,7 +472,7 @@ return {
                     if isSuccess then
                         logger.print('_mGetGraphCoroutine resumed OK')
                     else
-                        logger.warn('_mGetGraphCoroutine resumed with error') logger.warningDebugPrint(error)
+                        logger.warn('_mGetGraphCoroutine resumed with ERROR') logger.warningDebugPrint(error)
                     end
                 else -- leave it dead for this tick, everything else will have more resources to run through
                     logger.print('_mGetGraphCoroutine is not suspended, so I did not resume it')
@@ -502,7 +493,7 @@ return {
                     if isSuccess then
                         logger.print('_mStartStopTrainsCoroutine resumed OK')
                     else
-                        logger.print('_mStartStopTrainsCoroutine resumed with error') logger.debugPrint(error)
+                        logger.print('_mStartStopTrainsCoroutine resumed with ERROR') logger.debugPrint(error)
                     end
                 else -- leave it dead, giving a chance to the other coroutine to start and/or to change the shared variables
                     logger.print('_mStartStopTrainsCoroutine is not suspended, so I did not resume it')

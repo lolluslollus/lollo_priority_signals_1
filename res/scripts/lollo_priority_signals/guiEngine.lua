@@ -85,16 +85,13 @@ return {
             local signalList = api.engine.getComponent(objectId, api.type.ComponentType.SIGNAL_LIST)
             if not(signalList) then return end
 
-            local prioritySignalIds_eraA = signalHelpers.getEdgeObjectsIdsWithModelId2({objectId}, _signalModelId_EraA)
-            local prioritySignalIds_eraC = signalHelpers.getEdgeObjectsIdsWithModelId2({objectId}, _signalModelId_EraC)
-            local selectedPrioritySignalIds = {prioritySignalIds_eraA[1] or prioritySignalIds_eraC[1]}
-            if #selectedPrioritySignalIds ~= 1 then return end
+            if not(signalHelpers.isEdgeObjectIdWithModelIds(objectId, _signalModelId_EraA, _signalModelId_EraC)) then return end
 
-            local windowId = 'temp.view.entity_' .. selectedPrioritySignalIds[1]
+            local windowId = 'temp.view.entity_' .. objectId
             local window = api.gui.util.getById(windowId)
             if not(window) then return end
 
-            local newItemId = 'thisIsAPrioritySignal_' .. selectedPrioritySignalIds[1]
+            local newItemId = 'thisIsAPrioritySignal_' .. objectId
             if api.gui.util.getById(newItemId) ~= nil then return end
 
             local windowLayout = window:getLayout()

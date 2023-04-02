@@ -27,16 +27,29 @@ local _isEdgeObjectIdWithModelId = function(edgeObjectId, refModelId)
     and modelInstanceList.fatInstances[1].modelId == refModelId
 end
 
----@param edgeObjectIds integer[]
----@param refModelId integer
----@return integer[]
-local _getEdgeObjectsIdsWithModelId2 = function(edgeObjectIds, refModelId)
-    local results = {}
-    if type(edgeObjectIds) ~= 'table' then return results end
+---@param edgeObjectId integer
+---@param refModelId1 integer
+---@param refModelId2 integer
+---@return boolean
+local _isEdgeObjectIdWithModelIds = function(edgeObjectId, refModelId1, refModelId2)
+    if not(_isValidAndExistingId(edgeObjectId)) then return false end
 
-    for i = 1, #edgeObjectIds do
-        if _isEdgeObjectIdWithModelId(edgeObjectIds[i], refModelId) then
-            results[#results+1] = edgeObjectIds[i]
+    local modelInstanceList = api.engine.getComponent(edgeObjectId, api.type.ComponentType.MODEL_INSTANCE_LIST)
+    return modelInstanceList ~= nil
+    and modelInstanceList.fatInstances ~= nil
+    and modelInstanceList.fatInstances[1] ~= nil
+    and (modelInstanceList.fatInstances[1].modelId == refModelId1 or modelInstanceList.fatInstances[1].modelId == refModelId2)
+end
+
+---@param edgeObjectIds_indexed table<integer, any>
+---@param refModelId1 integer
+---@param refModelId2 integer
+---@return table<integer, boolean>
+local _getEdgeObjectsIdsWithModelIds_indexed = function(edgeObjectIds_indexed, refModelId1, refModelId2)
+    local results = {}
+    for edgeObjectId, _ in pairs(edgeObjectIds_indexed) do
+        if _isEdgeObjectIdWithModelIds(edgeObjectId, refModelId1, refModelId2) then
+            results[edgeObjectId] = true
         end
     end
     return results
@@ -150,20 +163,16 @@ end
 local funcs = {
     isValidId = _isValidId,
     isValidAndExistingId = _isValidAndExistingId,
-    getEdgeObjectsIdsWithModelId2 = _getEdgeObjectsIdsWithModelId2,
-    ---returns table of edgeObjectIds
-    ---@param refModelId integer
-    ---@return integer[]
-    getAllEdgeObjectsWithModelId = function(refModelId)
-        if not(_isValidId(refModelId)) then return {} end
 
-        local _map = api.engine.system.streetSystem.getEdgeObject2EdgeMap()
-        local edgeObjectIds = {}
-        for edgeObjectId, _ in pairs(_map) do
-            edgeObjectIds[#edgeObjectIds+1] = edgeObjectId
-        end
+    isEdgeObjectIdWithModelIds = _isEdgeObjectIdWithModelIds,
+    ---returns indexed table of edgeObjectIds
+    ---@param refModelId1 integer
+    ---@param refModelId2 integer
+    ---@return table<integer, boolean>
+    getAllEdgeObjectsWithModelIds_indexed = function(refModelId1, refModelId2)
+        if not(_isValidId(refModelId1)) or not(_isValidId(refModelId2)) then return {} end
 
-        return _getEdgeObjectsIdsWithModelId2(edgeObjectIds, refModelId)
+        return _getEdgeObjectsIdsWithModelIds_indexed(api.engine.system.streetSystem.getEdgeObject2EdgeMap(), refModelId1, refModelId2)
     end,
     ---@param refEdgeId integer
     ---@param nodeId integer
