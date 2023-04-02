@@ -7,7 +7,7 @@ local constants = {
     maxNSegmentsBehindIntersection = 8, -- seek segments max N segments behind intersection
     maxDistanceFromIntersection = 500, -- seek edges max 500 m from intersection
 
-    numGetGraphCoroutineResumesPerTick = 1,
+    numGetGraphCoroutineResumesPerTick = 2,
     numStartStopTrainsCoroutineResumesPerTick = 20,
 
     eventId = '__lollo_priority_signals__',
