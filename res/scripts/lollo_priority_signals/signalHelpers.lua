@@ -170,8 +170,6 @@ local funcs = {
     ---@param refModelId2 integer
     ---@return table<integer, boolean>
     getAllEdgeObjectsWithModelIds_indexed = function(refModelId1, refModelId2)
-        if not(_isValidId(refModelId1)) or not(_isValidId(refModelId2)) then return {} end
-
         return _getEdgeObjectsIdsWithModelIds_indexed(api.engine.system.streetSystem.getEdgeObject2EdgeMap(), refModelId1, refModelId2)
     end,
     ---@param refEdgeId integer
