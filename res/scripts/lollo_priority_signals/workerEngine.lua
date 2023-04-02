@@ -475,7 +475,7 @@ return {
                 logger.print('_mGetGraphCoroutine created')
             end
             for _ = 1, constants.numGetGraphCoroutineResumesPerTick, 1 do
-                if coroutine.status(_mGetGraphCoroutine) ~= 'dead' then
+                if coroutine.status(_mGetGraphCoroutine) == 'suspended' then
                     local isSuccess, error = coroutine.resume(_mGetGraphCoroutine)
                     -- if an error occurs in the coroutine, it dies.
                     if isSuccess then
@@ -484,7 +484,7 @@ return {
                         logger.warn('_mGetGraphCoroutine resumed with error') logger.warningDebugPrint(error)
                     end
                 else -- leave it dead for this tick, everything else will have more resources to run through
-                    logger.print('_mGetGraphCoroutine is dead and not resumed')
+                    logger.print('_mGetGraphCoroutine is not suspended, so I did not resume it')
                     break
                 end
             end -- update graph
@@ -496,7 +496,7 @@ return {
                 logger.print('_mStartStopTrainsCoroutine created')
             end
             for _ = 1, constants.numStartStopTrainsCoroutineResumesPerTick, 1 do
-                if coroutine.status(_mStartStopTrainsCoroutine) ~= 'dead' then
+                if coroutine.status(_mStartStopTrainsCoroutine) == 'suspended' then
                     local isSuccess, error = coroutine.resume(_mStartStopTrainsCoroutine)
                     -- if an error occurs in the coroutine, it dies: good. Errors can happen whenever the graph is out of date.
                     if isSuccess then
@@ -505,7 +505,7 @@ return {
                         logger.print('_mStartStopTrainsCoroutine resumed with error') logger.debugPrint(error)
                     end
                 else -- leave it dead, giving a chance to the other coroutine to start and/or to change the shared variables
-                    logger.print('_mStartStopTrainsCoroutine is dead and not resumed')
+                    logger.print('_mStartStopTrainsCoroutine is not suspended, so I did not resume it')
                     break
                 end
             end
