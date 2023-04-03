@@ -47,9 +47,15 @@ end
 ---@return table<integer, boolean>
 local _getEdgeObjectsIdsWithModelIds_indexed = function(edgeObjectIds_indexed, refModelId1, refModelId2)
     local results = {}
+    local count = 0
     for edgeObjectId, _ in pairs(edgeObjectIds_indexed) do
         if _isEdgeObjectIdWithModelIds(edgeObjectId, refModelId1, refModelId2) then
             results[edgeObjectId] = true
+        end
+        count = count + 1
+        if count > constants.numGetEdgeObjectsPerTick then
+            coroutine.yield()
+            count = 0
         end
     end
     return results
