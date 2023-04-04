@@ -570,7 +570,7 @@ end
 funcs.getGiveWaySignalsOrStations = function(bitsBeforeIntersection_indexedBy_intersectionNodeId_inEdgeId, prioritySignalIds_indexed)
     local recursiveFuncs
     local bitsBehindIntersection_indexedBy_intersectionNodeId_edgeIdGivingWay = {}
-    -- local frozenEdges_indexed = {}
+    local frozenEdges_indexed = {}
     -- local edgesNotLeadingToIntersection_indexedBy_intersectionNodeId_edgeId = {}
     local checkedEdges_indexedBy_intersectionNodeId_edgeId = {}
 
@@ -647,10 +647,10 @@ funcs.getGiveWaySignalsOrStations = function(bitsBeforeIntersection_indexedBy_in
                     isGoAhead = false,
                     isInEdgeDirTowardsIntersection = isInEdgeDirTowardsIntersection
                 }
-            elseif -- frozenEdges_indexed[edgeId] or 
+            elseif frozenEdges_indexed[edgeId] or
             funcs.isEdgeFrozenInStationOrDepot_FAST(edgeId) then -- station
                 logger.print('this edge is frozen in a station or a depot')
-                -- frozenEdges_indexed[edgeId] = true
+                frozenEdges_indexed[edgeId] = true
                 -- check if the intersection is reachable from both ends of the edge, there could be a light blocking it or a cross instead of a switch
                 if funcs.getIsPathFromEdgeToNode(edgeId, intersectionNodeId, constants.maxDistanceFromIntersection) then
                     _addEdgeGivingWay(edgeId, baseEdge, commonNodeId, intersectionNodeId, inEdgeId, isInEdgeDirTowardsIntersection)
