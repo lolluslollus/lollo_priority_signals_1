@@ -568,7 +568,6 @@ end
 ---@param prioritySignalIds_indexed table<integer, boolean>
 ---@return bitsBehindIntersection_indexedBy_intersectionNodeId_edgeIdGivingWay
 funcs.getGiveWaySignalsOrStations = function(bitsBeforeIntersection_indexedBy_intersectionNodeId_inEdgeId, prioritySignalIds_indexed)
-    local recursiveFuncs
     -- result
     ---@type bitsBehindIntersection_indexedBy_intersectionNodeId_edgeIdGivingWay
     local bitsBehindIntersection_indexedBy_intersectionNodeId_edgeIdGivingWay = {}
@@ -597,6 +596,8 @@ funcs.getGiveWaySignalsOrStations = function(bitsBeforeIntersection_indexedBy_in
             }
         end
     end
+
+    local recursiveFuncs
     recursiveFuncs = {
         getNext4 = function(intersectionNodeId, bitsBeforeIntersection_indexedBy_inEdgeId, edgeId, commonNodeId, inEdgeId, isInEdgeDirTowardsIntersection, count)
             logger.print('_getNext4 starting, edgeId = ' .. edgeId .. ', commonNodeId = ' .. commonNodeId)
