@@ -569,10 +569,14 @@ end
 ---@return bitsBehindIntersection_indexedBy_intersectionNodeId_edgeIdGivingWay
 funcs.getGiveWaySignalsOrStations = function(bitsBeforeIntersection_indexedBy_intersectionNodeId_inEdgeId, prioritySignalIds_indexed)
     local recursiveFuncs
+    -- result
+    ---@type bitsBehindIntersection_indexedBy_intersectionNodeId_edgeIdGivingWay
     local bitsBehindIntersection_indexedBy_intersectionNodeId_edgeIdGivingWay = {}
+    -- buffer
+    local checkedEdges_indexedBy_intersectionNodeId_edgeId = {}
+    -- buffer
     local frozenEdges_indexed = {}
     -- local edgesNotLeadingToIntersection_indexedBy_intersectionNodeId_edgeId = {}
-    local checkedEdges_indexedBy_intersectionNodeId_edgeId = {}
 
     local _addEdgeGivingWay = function(edgeIdGivingWay, baseEdge, nodeIdTowardsIntersection, intersectionNodeId, inEdgeId, isInEdgeDirTowardsIntersection)
         logger.print('_addEdgeGivingWay starting, edgeIdGivingWay = ' .. edgeIdGivingWay)
