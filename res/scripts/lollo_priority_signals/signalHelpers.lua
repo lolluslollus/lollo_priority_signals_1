@@ -46,14 +46,23 @@ end
 ---@param refModelId2 integer
 ---@return table<integer, boolean>
 local _getEdgeObjectsIdsWithModelIds_indexed = function(edgeObjectIds_indexed, refModelId1, refModelId2)
+    -- local isRestartTimer, _startTick_sec = true, 0
     local results = {}
     local count = 0
     for edgeObjectId, _ in pairs(edgeObjectIds_indexed) do
+        -- if logger.isExtendedLog() and isRestartTimer then
+        --     _startTick_sec = os.clock()
+        --     isRestartTimer = false
+        -- end
         if _isEdgeObjectIdWithModelIds(edgeObjectId, refModelId1, refModelId2) then
             results[edgeObjectId] = true
         end
         count = count + 1
         if count > constants.numGetEdgeObjectsPerTick then
+            -- if logger.isExtendedLog() then
+            --     logger.print('_getEdgeObjectsIdsWithModelIds_indexed: one go took ' .. math.ceil((os.clock() - _startTick_sec) * 1000) .. ' msec')
+            --     isRestartTimer = true
+            -- end
             coroutine.yield()
             count = 0
         end
@@ -697,7 +706,9 @@ funcs.getGiveWaySignalsOrStations = function(bitsBeforeIntersection_indexedBy_in
             logger.print('_getNext3 starting, edgeId = ' .. edgeId .. ', commonNodeId = ' .. commonNodeId)
             local next = recursiveFuncs.getNext4(intersectionNodeId, bitsBeforeIntersection_indexedBy_inEdgeId, edgeId, commonNodeId, inEdgeId, isInEdgeDirTowardsIntersection, count)
             if next.isGoAhead then
-                if count < constants.maxNSegmentsBehindIntersection then
+                if count == constants.maxNSegmentsBehindIntersection_thenYield then
+                    coroutine.yield()
+                elseif count < constants.maxNSegmentsBehindIntersection then
                     local connectedEdgeIds = funcs.getConnectedEdgeIdsExceptOne(edgeId, next.newNodeId)
                     recursiveFuncs.getNext2(intersectionNodeId, bitsBeforeIntersection_indexedBy_inEdgeId, connectedEdgeIds, next.newNodeId, next.inEdgeId, next.isInEdgeDirTowardsIntersection, count)
                     logger.print('count = ' .. count)
@@ -716,11 +727,13 @@ funcs.getGiveWaySignalsOrStations = function(bitsBeforeIntersection_indexedBy_in
     }
 
     for intersectionNodeId, bitsBeforeIntersection_indexedBy_inEdgeId in pairs(bitsBeforeIntersection_indexedBy_intersectionNodeId_inEdgeId) do
+        -- local _startTickSec = os.clock()
         checkedEdges_indexedBy_intersectionNodeId_edgeId[intersectionNodeId] = {}
         -- edgesNotLeadingToIntersection_indexedBy_intersectionNodeId_edgeId[intersectionNodeId] = {}
         local connectedEdgeIds = funcs.getConnectedEdgeIdsExceptSome(bitsBeforeIntersection_indexedBy_inEdgeId, intersectionNodeId)
         logger.print('_getNext1 got intersectionNodeId = ' .. intersectionNodeId .. ', connectedEdgeIds =') logger.debugPrint(connectedEdgeIds)
         recursiveFuncs.getNext2(intersectionNodeId, bitsBeforeIntersection_indexedBy_inEdgeId, connectedEdgeIds, intersectionNodeId, nil, nil, 0)
+        -- logger.print('getGiveWaySignalsOrStations: one go took ' .. math.ceil((os.clock() - _startTickSec) * 1000) .. ' msec')
         coroutine.yield()
     end
 

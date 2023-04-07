@@ -5,6 +5,7 @@ local constants = {
     maxNSegmentsBeforeIntersection = 16, -- seek intersections max N segments behind priority signal
     maxNSegmentsBeforePrioritySignal = 2, -- seek segments max N segments ahead of priority signal
     maxNSegmentsBehindIntersection = 8, -- seek segments max N segments behind intersection
+    maxNSegmentsBehindIntersection_thenYield = 4, -- yield after seeking segments max N segments behind intersection, must be about half of maxNSegmentsBehindIntersection
     maxDistanceFromIntersection = 500, -- seek edges max 500 m from intersection
 
     numGetEdgeObjectsPerTick = 100,

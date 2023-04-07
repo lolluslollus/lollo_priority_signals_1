@@ -307,17 +307,21 @@ local _actions = {
         logger.print('< ## _mStartStopTrainsCoroutine - start work at ' .. tostring(_startTick_sec) .. ' sec')
         -- error('test error') -- What happens if an error occurs in the coroutine? It dies!
         for intersectionNodeId, bitsBeforeIntersection_indexedBy_inEdgeId in pairs(_mBitsBeforeIntersection_indexedBy_intersectionNodeId_inEdgeId) do
+            -- local _startStopTrainsInnerStartTick_sec = 0
+            -- if logger.isExtendedLog() then
+            --     _startStopTrainsInnerStartTick_sec = os.clock()
+            -- end
             local hasIncomingPriorityVehicles, incomingPriorityVehicleIds = _utils.getPriorityVehicleIds(bitsBeforeIntersection_indexedBy_inEdgeId)
-            if logger.isExtendedLog() then
-                logger.print('intersectionNodeId = ' .. intersectionNodeId .. '; bitsBeforeIntersection_indexedBy_inEdgeId =') logger.debugPrint(bitsBeforeIntersection_indexedBy_inEdgeId)
-                logger.print('incomingPriorityVehicleIds =') logger.debugPrint(incomingPriorityVehicleIds)
-            end
+            -- if logger.isExtendedLog() then
+            --     logger.print('intersectionNodeId = ' .. intersectionNodeId .. '; bitsBeforeIntersection_indexedBy_inEdgeId =') logger.debugPrint(bitsBeforeIntersection_indexedBy_inEdgeId)
+            --     logger.print('incomingPriorityVehicleIds =') logger.debugPrint(incomingPriorityVehicleIds)
+            -- end
             if hasIncomingPriorityVehicles then
                 for edgeIdGivingWay, bitBehindIntersection in pairs(_mBitsBehindIntersection_indexedBy_intersectionNodeId_edgeIdGivingWay[intersectionNodeId]) do
-                    if logger.isExtendedLog() then
-                        logger.print('edgeIdGivingWay = ' .. edgeIdGivingWay)
-                        logger.print('bitBehindIntersection = ') logger.debugPrint(bitBehindIntersection)
-                    end
+                    -- if logger.isExtendedLog() then
+                    --     logger.print('edgeIdGivingWay = ' .. edgeIdGivingWay)
+                    --     logger.print('bitBehindIntersection = ') logger.debugPrint(bitBehindIntersection)
+                    -- end
                     -- avoid gridlocks: do not stop a slow vehicle if it is on the path of a priority vehicle - unless that priority vehicle is user-stopped
                     if not(_utils.isAnyTrainBoundForEdgeOrNode(incomingPriorityVehicleIds, edgeIdGivingWay))
                     then
@@ -414,9 +418,10 @@ local _actions = {
                             end
                         end
                     end
+                    -- logger.print('startStopTrains: one go took ' .. math.ceil((os.clock() - _startStopTrainsInnerStartTick_sec) * 1000) .. ' msec')
+                    coroutine.yield()
                 end
             end
-            coroutine.yield()
         end
         -- restart vehicles that don't need to wait anymore
         -- LOLLO TODO this thing restarts trains the user has manually stopped: this is no good
