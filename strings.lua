@@ -19,7 +19,7 @@ If you place no ordinary signals or stations on one branch, or you place them to
 2) Every signal has a white arrow that appears when you open the signal menu. Two-way priority signals only prioritise trains running along the white arrow - not those running against it. This is akin to ordinary two-way signals and waypoints.
 3) Switch priority computations on and off with the icon in the bottom bar. When they are off, priority signals will behave like standard signals. When they are on, the mod will recalculate the track graph every few seconds.
 4) Priority signals are expensive, only use them where you really need them.
-5) Some mods hog game_script.update(), the game can obviously only take so much.
+5) Some mods such as advanced statistics or digital displays hog game_script.update(). The game can only take so much, so you might need to choose.
 			]],
             ["ModName"] = "Priority signals for tracks",
             ["PrioritySignalsOff"] = "Priority signals OFF",
