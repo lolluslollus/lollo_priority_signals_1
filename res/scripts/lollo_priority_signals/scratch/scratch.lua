@@ -107,7 +107,7 @@ local logger = require('lollo_priority_signals.logger')
 local dummy1 = logger.isExtendedLog()
 logger.print('Logger ONE')
 
-local profileLogger = require('res.scripts.lollo_priority_signals.profileLogger')
+local profileLogger = require('lollo_priority_signals.profileLogger')
 logger.print('loggger test 02 = ', print('logger test 01'))
 logger.print('Logger ONEONE')
 profileLogger.print('Logger TWO')

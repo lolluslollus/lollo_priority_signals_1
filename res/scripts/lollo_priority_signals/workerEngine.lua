@@ -1,7 +1,7 @@
 local arrayUtils = require ('lollo_priority_signals.arrayUtils')
 local constants = require('lollo_priority_signals.constants')
 local logger = require ('lollo_priority_signals.logger')
-local profileLogger = require ('res.scripts.lollo_priority_signals.profileLogger')
+local profileLogger = require ('lollo_priority_signals.profileLogger')
 local signalHelpers = require('lollo_priority_signals.signalHelpers')
 local stateHelpers = require('lollo_priority_signals.stateHelpers')
 
@@ -45,37 +45,94 @@ local _utils = {
     ---@return boolean
     ---@return table<integer, boolean>
     getPriorityVehicleIds = function(bitsBeforeIntersection_indexedBy_inEdgeId, isGetStoppedVehicles)
-        logger.print('_getPriorityVehicleIds starting')
+        logger.print('_getPriorityVehicleIds starting, bitsBeforeIntersection_indexedBy_inEdgeId =') logger.debugPrint(bitsBeforeIntersection_indexedBy_inEdgeId)
         local results_indexed = {}
         local hasRecords = false
-
+        local foundVehicleIds_indexed = {}
         for inEdgeId, bitBeforeIntersection in pairs(bitsBeforeIntersection_indexedBy_inEdgeId) do
             -- logger.print('inEdgeId = ' .. inEdgeId .. ', bitBeforeIntersection =') logger.debugPrint(bitBeforeIntersection)
             local priorityVehicleIds = api.engine.system.transportVehicleSystem.getVehicles(bitBeforeIntersection.priorityEdgeIds, false)
             for _, vehicleId in pairs(priorityVehicleIds) do
-                local movePath = api.engine.getComponent(vehicleId, api.type.ComponentType.MOVE_PATH)
-                -- logger.print('vehicleId = ' .. vehicleId .. '; movePath.state = ' .. movePath.state)
-                -- logger.print('movePath =') logger.debugPrint(movePath)
-                -- if the train has not been stopped (I don't know what enum this is, it is not api.type.enum.TransportVehicleState)
-                -- if it is at terminal, the state is 3
-                -- if the user stops a train, its movePath will shorten as the train halts, to only include the edges (or expanded nodes) occupied by the train
-                if isGetStoppedVehicles or movePath.state ~= 2 then -- this may cause long-lasting gridlocks
-                -- if isGetStoppedVehicles or movePath.dyn.speed > 0 then -- this may fail to give priority to the second fast train waiting behind the first
-                    for p = movePath.dyn.pathPos.edgeIndex + 1, #movePath.path.edges, 1 do
-                        local currentMovePathBit = movePath.path.edges[p]
-                        -- logger.print('currentMovePathBit =') logger.debugPrint(currentMovePathBit)
-                        if currentMovePathBit.edgeId.entity == inEdgeId then
-                            -- return trains heading for the intersection
-                            if currentMovePathBit.dir == bitBeforeIntersection.isInEdgeDirTowardsIntersection then
-                                results_indexed[vehicleId] = true
-                                hasRecords = true
-                                logger.print('vehicle ' .. vehicleId .. ' counted coz is heading for the intersection')
-                                break
-                            -- ignore trains heading out of the intersection
-                            else
-                                logger.print('vehicle ' .. vehicleId .. ' ignored coz is heading away from the intersection')
+                if not(foundVehicleIds_indexed[vehicleId]) then
+                    local movePath = api.engine.getComponent(vehicleId, api.type.ComponentType.MOVE_PATH)
+                    -- logger.print('vehicleId = ' .. vehicleId .. '; movePath.state = ' .. movePath.state)
+                    -- logger.print('movePath =') logger.debugPrint(movePath)
+                    -- if the train has not been stopped (I don't know what enum this is, it is not api.type.enum.TransportVehicleState)
+                    -- if it is at terminal, the state is 3
+                    -- if the user stops a train, its movePath will shorten as the train halts, to only include the edges (or expanded nodes) occupied by the train
+                    if isGetStoppedVehicles or movePath.state ~= 2 then -- this may cause long-lasting gridlocks
+                    -- if isGetStoppedVehicles or movePath.dyn.speed > 0 then -- this may fail to give priority to the second fast train waiting behind the first
+                        for p = movePath.dyn.pathPos.edgeIndex + 1, #movePath.path.edges, 1 do
+                            local currentMovePathBit = movePath.path.edges[p]
+                            -- logger.print('currentMovePathBit =') logger.debugPrint(currentMovePathBit)
+                            if currentMovePathBit.edgeId.entity == inEdgeId then
+                                -- return trains heading for the intersection
+                                if currentMovePathBit.dir == bitBeforeIntersection.isInEdgeDirTowardsIntersection then
+                                    results_indexed[vehicleId] = true
+                                    hasRecords = true
+                                    logger.print('vehicle ' .. vehicleId .. ' counted coz is heading for the intersection')
+                                -- ignore trains heading out of the intersection
+                                else
+                                    logger.print('vehicle ' .. vehicleId .. ' ignored coz is heading away from the intersection')
+                                end
+                                foundVehicleIds_indexed[vehicleId] = true
                                 break
                             end
+                        end
+                    end
+                end
+            end
+            coroutine.yield()
+        end
+        return hasRecords, results_indexed
+    end,
+    ---only reliable with trains that are not user-stopped
+    ---@param bitsBeforeIntersection_indexedBy_inEdgeId table<integer, { isInEdgeDirTowardsIntersection: boolean, priorityEdgeIds: integer[] }>
+    ---@param isGetStoppedVehicles? boolean also get stopped vehicles, useful for testing
+    ---@return boolean
+    ---@return table<integer, boolean>
+    getPriorityVehicleIdsNEW = function(bitsBeforeIntersection_indexedBy_inEdgeId, isGetStoppedVehicles)
+        logger.print('_getPriorityVehicleIds starting, bitsBeforeIntersection_indexedBy_inEdgeId =') logger.debugPrint(bitsBeforeIntersection_indexedBy_inEdgeId)
+        local results_indexed = {}
+        local hasRecords = false
+        local foundVehicleIds_indexed = {}
+        for inEdgeId, bitBeforeIntersection in pairs(bitsBeforeIntersection_indexedBy_inEdgeId) do
+            -- logger.print('inEdgeId = ' .. inEdgeId .. ', bitBeforeIntersection =') logger.debugPrint(bitBeforeIntersection)
+            local edgeOrVehicleCount = 0
+            for _, priorityEdgeId in pairs(bitBeforeIntersection.priorityEdgeIds) do
+                local priorityVehicleIds = api.engine.system.transportVehicleSystem.getVehicles({priorityEdgeId}, false)
+                for _, vehicleId in pairs(priorityVehicleIds) do
+                    if not(foundVehicleIds_indexed[vehicleId]) then
+                        edgeOrVehicleCount = edgeOrVehicleCount + 1
+                        local movePath = api.engine.getComponent(vehicleId, api.type.ComponentType.MOVE_PATH)
+                        -- logger.print('vehicleId = ' .. vehicleId .. '; movePath.state = ' .. movePath.state)
+                        -- logger.print('movePath =') logger.debugPrint(movePath)
+                        -- if the train has not been stopped (I don't know what enum this is, it is not api.type.enum.TransportVehicleState)
+                        -- if it is at terminal, the state is 3
+                        -- if the user stops a train, its movePath will shorten as the train halts, to only include the edges (or expanded nodes) occupied by the train
+                        if isGetStoppedVehicles or movePath.state ~= 2 then -- this may cause long-lasting gridlocks
+                        -- if isGetStoppedVehicles or movePath.dyn.speed > 0 then -- this may fail to give priority to the second fast train waiting behind the first
+                            for p = movePath.dyn.pathPos.edgeIndex + 1, #movePath.path.edges, 1 do
+                                local currentMovePathBit = movePath.path.edges[p]
+                                -- logger.print('currentMovePathBit =') logger.debugPrint(currentMovePathBit)
+                                if currentMovePathBit.edgeId.entity == inEdgeId then
+                                    -- return trains heading for the intersection
+                                    if currentMovePathBit.dir == bitBeforeIntersection.isInEdgeDirTowardsIntersection then
+                                        results_indexed[vehicleId] = true
+                                        hasRecords = true
+                                        logger.print('vehicle ' .. vehicleId .. ' counted coz is heading for the intersection')
+                                    -- ignore trains heading out of the intersection
+                                    else
+                                        logger.print('vehicle ' .. vehicleId .. ' ignored coz is heading away from the intersection')
+                                    end
+                                    foundVehicleIds_indexed[vehicleId] = true
+                                    break
+                                end
+                            end
+                        end
+                        if edgeOrVehicleCount > 5 then
+                            edgeOrVehicleCount = 0
+                            coroutine.yield()
                         end
                     end
                 end
@@ -316,7 +373,6 @@ local _actions = {
                         local vehicleIdsNearGiveWaySignals = api.engine.system.transportVehicleSystem.getVehicles({edgeIdGivingWay}, false)
                         logger.print('vehicleIdsNearGiveWaySignals =') logger.debugPrint(vehicleIdsNearGiveWaySignals)
                         for _, vehicleId in pairs(vehicleIdsNearGiveWaySignals) do
-                            -- local vehicleIdsOnIntersection = api.engine.system.transportVehicleSystem.getVehicles({intersectionNodeId}, false)
                             local vehicleIdsOnAnyNearbyIntersection = api.engine.system.transportVehicleSystem.getVehicles(_mIntersectionNodeIds_indexedBy_edgeIdGivingWay[edgeIdGivingWay], false)
                             -- avoid gridlocks: do not stop a vehicle that is already on any intersection where edgeIdGivingWay plays a role
                             if not(arrayUtils.arrayHasValue(vehicleIdsOnAnyNearbyIntersection, vehicleId)) then
