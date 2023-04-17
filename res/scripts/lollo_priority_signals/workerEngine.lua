@@ -1,8 +1,14 @@
 local arrayUtils = require ('lollo_priority_signals.arrayUtils')
 local constants = require('lollo_priority_signals.constants')
 local logger = require ('lollo_priority_signals.logger')
+local profileLogger = require ('res.scripts.lollo_priority_signals.profileLogger')
 local signalHelpers = require('lollo_priority_signals.signalHelpers')
 local stateHelpers = require('lollo_priority_signals.stateHelpers')
+
+--[[
+    LOLLO NOTE one-way lights are read as two-way lights,
+    and they don't appear in the menu if they have no two-way counterparts, or if those counterparts have expired.
+]]
 
 ---@type integer
 local _mSignalModelId_EraA
@@ -178,15 +184,6 @@ local _utils = {
 local _mGetGraphCoroutine, _mStartStopTrainsCoroutine
 local _actions = {
     updateGraph = function()
-        local _startTick_sec = os.clock()
-        logger.print('< ## _mGetGraphCoroutine - start updating graph at ' .. tostring(_startTick_sec) .. ' sec')
-        -- ---@type table<integer, integer> --signalId, edgeId
-        -- local _edgeObject2EdgeMap = api.engine.system.streetSystem.getEdgeObject2EdgeMap()
-
-        --[[
-            LOLLO NOTE one-way lights are read as two-way lights,
-            and they don't appear in the menu if they have no two-way counterparts, or if those counterparts have expired.
-        ]]
         local prioritySignalIds_indexed = signalHelpers.getAllEdgeObjectsWithModelIds_indexed(_mSignalModelId_EraA, _mSignalModelId_EraC)
         logger.print('prioritySignalIds_indexed =') logger.debugPrint(prioritySignalIds_indexed)
         coroutine.yield()
@@ -297,20 +294,10 @@ local _actions = {
         _mIntersectionNodeIds_indexedBy_edgeIdGivingWay = intersectionNodeIds_indexedBy_edgeIdGivingWay
         _mLastRefreshGraph_systemTime_msec = os.clock() * 1000
         _mIsGraphDone = true
-
-        if logger.isExtendedLog() then
-            logger.print('> ## _mGetGraphCoroutine - Updating graph took ' .. math.ceil((os.clock() - _startTick_sec) * 1000) .. ' msec')
-        end
     end,
     startStopTrains = function()
-        local _startTick_sec = os.clock()
-        logger.print('< ## _mStartStopTrainsCoroutine - start work at ' .. tostring(_startTick_sec) .. ' sec')
         -- error('test error') -- What happens if an error occurs in the coroutine? It dies!
         for intersectionNodeId, bitsBeforeIntersection_indexedBy_inEdgeId in pairs(_mBitsBeforeIntersection_indexedBy_intersectionNodeId_inEdgeId) do
-            -- local _startStopTrainsInnerStartTick_sec = 0
-            -- if logger.isExtendedLog() then
-            --     _startStopTrainsInnerStartTick_sec = os.clock()
-            -- end
             local hasIncomingPriorityVehicles, incomingPriorityVehicleIds = _utils.getPriorityVehicleIds(bitsBeforeIntersection_indexedBy_inEdgeId)
             -- if logger.isExtendedLog() then
             --     logger.print('intersectionNodeId = ' .. intersectionNodeId .. '; bitsBeforeIntersection_indexedBy_inEdgeId =') logger.debugPrint(bitsBeforeIntersection_indexedBy_inEdgeId)
@@ -416,10 +403,10 @@ local _actions = {
                                     end
                                 end
                             end
+                            coroutine.yield()
                         end
                     end
-                    -- logger.print('startStopTrains: one go took ' .. math.ceil((os.clock() - _startStopTrainsInnerStartTick_sec) * 1000) .. ' msec')
-                    coroutine.yield()
+                    -- coroutine.yield()
                 end
             end
         end
@@ -435,10 +422,6 @@ local _actions = {
                 _mStopProps_indexedBy_stoppedVehicleIds[vehicleId] = nil
             end
         end
-
-        if logger.isExtendedLog() then
-            logger.print('> ## _mStartStopTrainsCoroutine - work took ' .. math.ceil((os.clock() - _startTick_sec) * 1000) .. ' msec')
-        end
     end,
 }
 
@@ -448,14 +431,12 @@ return {
         local state = stateHelpers.getState()
         if not(state.is_on) then return end
 
-        -- logger.print('#### workerEngine.update() starting at ' .. tostring(os.clock()) .. ' sec')
-
         _mGameTime_msec = api.engine.getComponent(api.engine.util.getWorld(), api.type.ComponentType.GAME_TIME).gameTime
         if not(_mGameTime_msec) then logger.err('update() cannot get time') return end
 
         _mSystemTime_msec = os.clock() * 1000
 
-        -- if _mGameTime_msec ~= _mLastGameTime_msec then -- skip if paused, for testing
+        if _mGameTime_msec ~= _mLastGameTime_msec or not(_mIsGraphDone) then -- skip if paused, for testing
             logger.print('_mSystemTime_msec = ' .. tostring(_mSystemTime_msec) .. ', _mLastRefreshGraph_systemTime_msec = ' .. tostring(_mLastRefreshGraph_systemTime_msec))
             if _mGetGraphCoroutine == nil
             or (
@@ -472,19 +453,23 @@ return {
             end
             for _ = 1, constants.numGetGraphCoroutineResumesPerTick, 1 do
                 if coroutine.status(_mGetGraphCoroutine) == 'suspended' then
+                    local startTick_sec = 0
+                    if profileLogger.isExtendedLog() then startTick_sec = os.clock() end
+
                     local isSuccess, error = coroutine.resume(_mGetGraphCoroutine)
                     -- if an error occurs in the coroutine, it dies.
-                    if isSuccess then
-                        logger.print('_mGetGraphCoroutine resumed OK')
-                    else
+                    if not(isSuccess) then
                         logger.warn('_mGetGraphCoroutine resumed with ERROR') logger.warningDebugPrint(error)
+                    end
+                    if profileLogger.isExtendedLog() then
+                        profileLogger.print('_mGetGraphCoroutine resumed, one go took ' .. math.ceil((os.clock() - startTick_sec) * 1000) .. ' msec')
                     end
                 else -- leave it dead for this tick, everything else will have more resources to run through
                     logger.print('_mGetGraphCoroutine is not suspended, so I did not resume it')
                     break
                 end
             end -- update graph
-        -- end -- skip if paused, for testing
+        end -- skip if paused, for testing
 
         if _mGameTime_msec ~= _mLastGameTime_msec and _mIsGraphDone then -- skip if paused or graph is missing
             if _mStartStopTrainsCoroutine == nil or coroutine.status(_mStartStopTrainsCoroutine) == 'dead' then
@@ -493,12 +478,16 @@ return {
             end
             for _ = 1, constants.numStartStopTrainsCoroutineResumesPerTick, 1 do
                 if coroutine.status(_mStartStopTrainsCoroutine) == 'suspended' then
+                    local startTick_sec = 0
+                    if profileLogger.isExtendedLog() then startTick_sec = os.clock() end
+
                     local isSuccess, error = coroutine.resume(_mStartStopTrainsCoroutine)
                     -- if an error occurs in the coroutine, it dies: good. Errors can happen whenever the graph is out of date.
-                    if isSuccess then
-                        logger.print('_mStartStopTrainsCoroutine resumed OK')
-                    else
+                    if not(isSuccess) then
                         logger.print('_mStartStopTrainsCoroutine resumed with ERROR') logger.debugPrint(error)
+                    end
+                    if profileLogger.isExtendedLog() then
+                        profileLogger.print('_mStartStopTrainsCoroutine resumed, one go took ' .. math.ceil((os.clock() - startTick_sec) * 1000) .. ' msec')
                     end
                 else -- leave it dead, giving a chance to the other coroutine to start and/or to change the shared variables
                     logger.print('_mStartStopTrainsCoroutine is not suspended, so I did not resume it')
@@ -527,7 +516,9 @@ return {
                     logger.print('state after =') logger.debugPrint(stateHelpers.getState())
                 end
             end,
-            logger.xpErrorHandler
+            function(error)
+                logger.xpErrorHandler(error)
+            end
         )
     end,
     load = function()

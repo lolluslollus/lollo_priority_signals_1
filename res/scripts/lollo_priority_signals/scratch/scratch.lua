@@ -2,6 +2,7 @@ package.path = package.path .. ';res/scripts/?.lua'
 -- package.path = package.path .. ';C:/Program Files (x86)/Steam/steamapps/common/Transport Fever 2/res/scripts/?.lua'
 
 local arrayUtils = require('lollo_priority_signals.arrayUtils')
+
 local aaaa = arrayUtils.getUniqueConcatValues(
     {1, 12345, 3},
     {1, 12344, 3}
@@ -101,5 +102,16 @@ local caae = getTextBetweenBrackets('abcdd(()))sss', true)
 local caaf = getTextBetweenBrackets('abcdd(()sss', true)
 local caag = getTextBetweenBrackets('abcdd(aba)(pup)sss', true)
 local caah = getTextBetweenBrackets('abcdd(aba)s(pop)ss', true)
+
+local logger = require('lollo_priority_signals.logger')
+local dummy1 = logger.isExtendedLog()
+logger.print('Logger ONE')
+
+local profileLogger = require('res.scripts.lollo_priority_signals.profileLogger')
+logger.print('loggger test 02 = ', print('logger test 01'))
+logger.print('Logger ONEONE')
+profileLogger.print('Logger TWO')
+local dummy11 = logger.isExtendedLog()
+local dummy2 = profileLogger.isExtendedLog()
 
 local dummy = 123
