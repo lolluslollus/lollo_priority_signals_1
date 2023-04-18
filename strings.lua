@@ -21,6 +21,7 @@ If you place no ordinary signals or stations on one branch, or you place them to
 4) Priority signals are expensive, only use them where you really need them.
 5) Some mods such as advanced statistics or digital displays hog game_script.update(). The game can only take so much, so you might need to choose.
 			]],
+            ["Invisible_Signal_Name"] = "Invisible Priority Path Signal",
             ["ModName"] = "Priority signals for tracks",
             ["PrioritySignalsOff"] = "Priority signals OFF",
             ["PrioritySignalsOn"] = "Priority signals ON",

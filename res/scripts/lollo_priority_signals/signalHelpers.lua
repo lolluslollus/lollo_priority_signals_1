@@ -30,22 +30,28 @@ end
 ---@param edgeObjectId integer
 ---@param refModelId1 integer
 ---@param refModelId2 integer
+---@param refModelId3 integer
 ---@return boolean
-local _isEdgeObjectIdWithModelIds = function(edgeObjectId, refModelId1, refModelId2)
+local _isEdgeObjectIdWithModelIds = function(edgeObjectId, refModelId1, refModelId2, refModelId3)
     if not(_isValidAndExistingId(edgeObjectId)) then return false end
 
     local modelInstanceList = api.engine.getComponent(edgeObjectId, api.type.ComponentType.MODEL_INSTANCE_LIST)
     return modelInstanceList ~= nil
     and modelInstanceList.fatInstances ~= nil
     and modelInstanceList.fatInstances[1] ~= nil
-    and (modelInstanceList.fatInstances[1].modelId == refModelId1 or modelInstanceList.fatInstances[1].modelId == refModelId2)
+    and (
+        modelInstanceList.fatInstances[1].modelId == refModelId1
+        or modelInstanceList.fatInstances[1].modelId == refModelId2
+        or modelInstanceList.fatInstances[1].modelId == refModelId3
+    )
 end
 
 ---@param edgeObjectIds_indexed table<integer, any>
 ---@param refModelId1 integer
 ---@param refModelId2 integer
+---@param refModelId3 integer
 ---@return table<integer, boolean>
-local _getEdgeObjectsIdsWithModelIds_indexed = function(edgeObjectIds_indexed, refModelId1, refModelId2)
+local _getEdgeObjectsIdsWithModelIds_indexed = function(edgeObjectIds_indexed, refModelId1, refModelId2, refModelId3)
     -- local isRestartTimer, _startTick_sec = true, 0
     local results = {}
     local count = 0
@@ -54,7 +60,7 @@ local _getEdgeObjectsIdsWithModelIds_indexed = function(edgeObjectIds_indexed, r
         --     _startTick_sec = os.clock()
         --     isRestartTimer = false
         -- end
-        if _isEdgeObjectIdWithModelIds(edgeObjectId, refModelId1, refModelId2) then
+        if _isEdgeObjectIdWithModelIds(edgeObjectId, refModelId1, refModelId2, refModelId3) then
             results[edgeObjectId] = true
         end
         count = count + 1
@@ -184,9 +190,10 @@ local funcs = {
     ---returns indexed table of edgeObjectIds
     ---@param refModelId1 integer
     ---@param refModelId2 integer
+    ---@param refModelId3 integer
     ---@return table<integer, boolean>
-    getAllEdgeObjectsWithModelIds_indexed = function(refModelId1, refModelId2)
-        return _getEdgeObjectsIdsWithModelIds_indexed(api.engine.system.streetSystem.getEdgeObject2EdgeMap(), refModelId1, refModelId2)
+    getAllEdgeObjectsWithModelIds_indexed = function(refModelId1, refModelId2, refModelId3)
+        return _getEdgeObjectsIdsWithModelIds_indexed(api.engine.system.streetSystem.getEdgeObject2EdgeMap(), refModelId1, refModelId2, refModelId3)
     end,
     ---@param refEdgeId integer
     ---@param nodeId integer

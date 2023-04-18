@@ -14,6 +14,8 @@ local stateHelpers = require('lollo_priority_signals.stateHelpers')
 local _mSignalModelId_EraA
 ---@type integer
 local _mSignalModelId_EraC
+---@type integer
+local _mSignalModelId_Invisible
 ---@type table<string, string>
 local _mTexts = { }
 ---@type integer
@@ -241,7 +243,7 @@ local _utils = {
 local _mGetGraphCoroutine, _mStartStopTrainsCoroutine
 local _actions = {
     updateGraph = function()
-        local prioritySignalIds_indexed = signalHelpers.getAllEdgeObjectsWithModelIds_indexed(_mSignalModelId_EraA, _mSignalModelId_EraC)
+        local prioritySignalIds_indexed = signalHelpers.getAllEdgeObjectsWithModelIds_indexed(_mSignalModelId_EraA, _mSignalModelId_EraC, _mSignalModelId_Invisible)
         logger.print('prioritySignalIds_indexed =') logger.debugPrint(prioritySignalIds_indexed)
         coroutine.yield()
         -- By construction, I cannot have more than one priority signal on any edge.
@@ -583,7 +585,9 @@ return {
         logger.print('workerEngine.load firing')
         _mSignalModelId_EraA = api.res.modelRep.find('railroad/lollo_priority_signals/signal_path_a.mdl')
         _mSignalModelId_EraC = api.res.modelRep.find('railroad/lollo_priority_signals/signal_path_c.mdl')
+        _mSignalModelId_Invisible = api.res.modelRep.find('railroad/lollo_priority_signals/signal_path_invisible.mdl')
         logger.print('_signalModelId_EraA =') logger.debugPrint(_mSignalModelId_EraA)
         logger.print('_signalModelId_EraC =') logger.debugPrint(_mSignalModelId_EraC)
+        logger.print('_signalModelId_Invisible =') logger.debugPrint(_mSignalModelId_Invisible)
     end,
 }

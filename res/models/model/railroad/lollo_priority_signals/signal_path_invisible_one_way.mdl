@@ -1,0 +1,43 @@
+function data()
+    return {
+        boundingInfo = {
+            bbMax = { 0.78099989891052, -1.625, 5.25, },
+            bbMin = { -0.21140003204346, -2.375, -0.21500039100647, },
+        },
+        collider = {
+            params = {
+                halfExtents = { 0.49619996547699, 0.375, 2.7325000762939, },
+            },
+            transf = { 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, },
+            type = "BOX",
+        },
+        lods = {
+            {
+                node = {
+
+                },
+                static = false,
+                visibleFrom = 0,
+                visibleTo = 500,
+            },
+        },
+        metadata = {
+            availability = {
+                yearFrom = 0,
+                yearTo = 0,
+            },
+            category = {categories = {'priority-signals'}},
+            cost = {
+                price = 3000,
+            },
+            description = {
+                description = _("Signal_Desc"),
+                name = _("Invisible_Signal_Name"),
+            },
+            signal = {
+                type = "ONE_WAY_PATH_SIGNAL",
+            },
+        },
+        version = 1,
+    }
+end
