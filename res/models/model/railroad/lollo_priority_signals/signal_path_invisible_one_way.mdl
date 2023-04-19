@@ -35,6 +35,7 @@ function data()
                 name = _("Invisible_Signal_Name"),
             },
             signal = {
+                dontmove = true, -- avoid crash with wonky mod "Signal Distance"
                 type = "ONE_WAY_PATH_SIGNAL",
             },
         },
