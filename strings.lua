@@ -20,6 +20,7 @@ If you place no ordinary signals or stations on one branch, or you place them to
 3) Switch priority computations on and off with the icon in the bottom bar. When they are off, priority signals will behave like standard signals.
 4) Priority signals are expensive, only use them where you really need them.
 5) Some mods such as advanced statistics or digital displays hog game_script.update(). The game can only take so much, so you might need to choose.
+6) "Signal Distance" crashes the game when priority signals are installed: remove it.
 			]],
             ["Invisible_Signal_Name"] = "Invisible Priority Path Signal",
             ["ModName"] = "Priority signals for tracks",
