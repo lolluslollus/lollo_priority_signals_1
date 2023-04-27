@@ -19,7 +19,7 @@ If you place no ordinary signals or stations on one branch, or you place them to
 2) Every signal has a white arrow that appears when you open the signal menu. Two-way priority signals only prioritise trains running along the white arrow - not those running against it. This is akin to ordinary two-way signals and waypoints.
 3) Switch priority computations on and off with the icon in the bottom bar. When they are off, priority signals will behave like standard signals.
 4) Priority signals are expensive, only use them where you really need them.
-5) Make sure all branches linked to an intersection with priority signals have a signal (of any type) near the intersection.
+5) Every branch linked to an intersection with priority signals needs a signal (of any type) near the intersection.
 6) Some mods such as advanced statistics or digital displays hog game_script.update(). The game can only take so much, so you might need to choose.
 			]],
             ["Invisible_Signal_Name"] = "Invisible Priority Path Signal",
