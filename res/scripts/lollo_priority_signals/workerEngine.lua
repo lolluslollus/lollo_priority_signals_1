@@ -238,6 +238,21 @@ local _utils = {
             end
         )
     end,
+    ---@param tab table|any[]
+    ---@param isIgnoreNil? boolean
+    ---@return boolean
+    tableHasValues = function(tab, isIgnoreNil)
+        if type(tab) ~= 'table' and type(tab) ~= 'userdata' then
+            return false
+        end
+        local result = 0
+        for _, value in pairs(tab) do
+            if not(isIgnoreNil) or value ~= nil then
+                return true
+            end
+        end
+        return false
+    end,
 }
 
 local _mGetGraphCoroutine, _mStartStopTrainsCoroutine
@@ -293,7 +308,7 @@ local _actions = {
         logger.print('before attaching the chains, bitsBeforeIntersection_indexedBy_intersectionNodeId_inEdgeId =') logger.debugPrint(bitsBeforeIntersection_indexedBy_intersectionNodeId_inEdgeId)
         logger.print('chains_indexedBy_innerSignalId starts as') logger.debugPrint(chains_indexedBy_innerSignalId)
         local count = 0
-        while count < constants.maxNChainedPrioritySignalsBeforeIntersection and arrayUtils.tableHasValues(chains_indexedBy_innerSignalId, true) do
+        while count < constants.maxNChainedPrioritySignalsBeforeIntersection and _utils.tableHasValues(chains_indexedBy_innerSignalId, true) do
             for intersectionNodeId, bitsBeforeIntersection_indexedBy_inEdgeId in pairs(bitsBeforeIntersection_indexedBy_intersectionNodeId_inEdgeId) do
                 for inEdgeId, bitBeforeIntersection in pairs(bitsBeforeIntersection_indexedBy_inEdgeId) do
                     local chainsIndex = bitBeforeIntersection.outerSignalId -- write it down coz it gets overwritten in the following

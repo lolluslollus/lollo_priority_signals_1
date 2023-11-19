@@ -3,15 +3,6 @@ package.path = package.path .. ';res/scripts/?.lua'
 
 local arrayUtils = require('lollo_priority_signals.arrayUtils')
 
-local aaaa = arrayUtils.getUniqueConcatValues(
-    {1, 12345, 3},
-    {1, 12344, 3}
-)
-local aaab = arrayUtils.getUniqueConcatValues(
-    {1, 12345, 3},
-    {1, 12345, 3}
-)
-
 local aaa = { 1, 2, 3, 4}
 table.remove(aaa, 2)
 
