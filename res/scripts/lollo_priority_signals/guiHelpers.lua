@@ -35,29 +35,6 @@ local utils = {
 }
 
 local guiHelpers = {
-    showWarningWindowWithMessage = function(text)
-        local layout = api.gui.layout.BoxLayout.new('VERTICAL')
-        local window = api.gui.util.getById(constants.guiIds.warningWindowWithMessageId)
-        if window == nil then
-            window = api.gui.comp.Window.new(_texts.warningWindowTitle, layout)
-            window:setId(constants.guiIds.warningWindowWithMessageId)
-        else
-            window:setContent(layout)
-            window:setVisible(true, false)
-        end
-
-        layout:addItem(api.gui.comp.TextView.new(text))
-
-        window:setHighlighted(true)
-        local position = api.gui.util.getMouseScreenPos()
-        window:setPosition(position.x + _windowXShift, position.y)
-        -- window:addHideOnCloseHandler()
-        window:onClose(
-            function()
-                window:setVisible(false, false)
-            end
-        )
-    end,
     initNotausButton = function(isDynamicOn, funcOfBool)
         if api.gui.util.getById(constants.guiIds.dynamicOnOffButtonId) then return end
 
