@@ -329,10 +329,12 @@ local funcs = {
     end,
 
     ---comment
-    ---@param baseEdge integer
+    ---@param baseEdge any
     ---@return integer[]
     getSignalIds = function(baseEdge)
         local results = {}
+        if baseEdge == nil or type(baseEdge.objects) ~= "table" then return results end
+
         for _, object in pairs(baseEdge.objects) do
             local objectId = object[1]
             local signalList = api.engine.getComponent(objectId, api.type.ComponentType.SIGNAL_LIST)
