@@ -690,7 +690,7 @@ funcs.getGiveWaySignalsOrStations = function(bitsBeforeIntersection_indexedBy_in
                     }
                 end
                 if nSegmentsFromIntersection > 1 and (baseEdge.node0 == intersectionNodeId or baseEdge.node1 == intersectionNodeId) then
-                    logger.print('going back, leave this branch')
+                    logger.print('you are going back, leave this branch')
                     return {
                         inEdgeId = inEdgeId,
                         isGoAhead = false,
