@@ -370,38 +370,20 @@ local _actions = {
         _mIsGraphDone = true
     end,
     startStopTrains = function()
-        -- LOLLO TODO
-        -- The mod looks for the first joint (ie node) behind a priority signal, and then it follows the stretches of track (edges) that reach it.
-        -- If it finds a station or a signal, it will count it as a "give way" branch;
-        -- if it finds another node before a station or a signal, it will ignore that branch.
-        -- I could make it search on, but it would slow down the game.
-        -- Alternatively, I could add "give way" signals and skip the search altogether. We'll see.
-        
         -- error('test error') -- What happens if an error occurs in the coroutine? It dies!
         for intersectionNodeId, bitsBeforeIntersection_indexedBy_inEdgeId in pairs(_mBitsBeforeIntersection_indexedBy_intersectionNodeId_inEdgeId) do
-            -- print('intersectionNodeId = ' .. (intersectionNodeId or 'NIL') .. ' - bitsBeforeIntersection_indexedBy_inEdgeId = ') debugPrint(bitsBeforeIntersection_indexedBy_inEdgeId) -- LOLLO TODO remove after testing
-            -- LOLLO TODO remove after testing BEGIN
-            -- intersectionNodeId = 14909
-            -- nodeId = 14909
-            -- _map = api.engine.system.streetSystem.getNode2TrackEdgeMap()
-            -- _map[nodeId]
-            -- LOLLO TODO remove after testing END
             local hasIncomingPriorityVehicles, incomingPriorityVehicleIds = _utils.getPriorityVehicleIds(bitsBeforeIntersection_indexedBy_inEdgeId)
             -- if logger.isExtendedLog() then
             --     logger.print('intersectionNodeId = ' .. intersectionNodeId .. '; bitsBeforeIntersection_indexedBy_inEdgeId =') logger.debugPrint(bitsBeforeIntersection_indexedBy_inEdgeId)
             --     logger.print('incomingPriorityVehicleIds =') logger.debugPrint(incomingPriorityVehicleIds)
             -- end
             if hasIncomingPriorityVehicles then
-                -- print('hasIncomingPriorityVehicles == true, intersectionNodeId = ' .. (intersectionNodeId or 'NIL')) -- LOLLO TODO remove after testing
                 for edgeIdGivingWay, bitBehindIntersection in pairs(_mBitsBehindIntersection_indexedBy_intersectionNodeId_edgeIdGivingWay[intersectionNodeId]) do
                     -- if logger.isExtendedLog() then
                     --     logger.print('edgeIdGivingWay = ' .. edgeIdGivingWay)
                     --     logger.print('bitBehindIntersection = ') logger.debugPrint(bitBehindIntersection)
                     -- end
                     -- avoid gridlocks: do not stop a slow vehicle if it is on the path of a priority vehicle - unless that priority vehicle is user-stopped
-
-                    -- print('edgeIdGivingWay = ' .. (edgeIdGivingWay or 'NIL') .. ' - bitBehindIntersection =') debugPrint(bitBehindIntersection) -- LOLLO TODO remove after testing
-
                     if not(_utils.isAnyTrainBoundForEdgeOrNode(incomingPriorityVehicleIds, edgeIdGivingWay))
                     then
                         -- logger.print('no priority trains are bound for edge ' .. edgeIdGivingWay)

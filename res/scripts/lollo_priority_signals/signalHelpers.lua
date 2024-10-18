@@ -185,8 +185,40 @@ end
 local funcs = {
     isValidId = _isValidId,
     isValidAndExistingId = _isValidAndExistingId,
-
     isEdgeObjectIdWithModelIds = _isEdgeObjectIdWithModelIds,
+    ---get nodes separated from the given node by 1 short edge with no signals
+    ---@param nodeId integer
+    ---@return table<integer, boolean>
+    getAdjacentNodes_indexed = function(nodeId)
+        if not(_isValidAndExistingId(nodeId)) then return {} end
+
+        local _map = api.engine.system.streetSystem.getNode2TrackEdgeMap()
+        local results = {}
+
+        local connectedEdgeIds_userdata = _map[nodeId] -- userdata
+        if connectedEdgeIds_userdata ~= nil then
+            for _, edgeId in pairs(connectedEdgeIds_userdata) do -- cannot use connectedEdgeIdsUserdata[index] here
+                if _isValidAndExistingId(edgeId) then
+                    local baseEdge = api.engine.getComponent(edgeId, api.type.ComponentType.BASE_EDGE)
+                    if baseEdge ~= nil and #baseEdge.objects == 0 then
+                        local outerNodeId = (baseEdge.node0 == nodeId) and baseEdge.node1 or baseEdge.node0
+                        if #_map[outerNodeId] > 2 then -- this node is a joint
+                            if ((baseEdge.tangent0.x + baseEdge.tangent1.x) * (baseEdge.tangent0.x + baseEdge.tangent1.x)
+                            + (baseEdge.tangent0.y + baseEdge.tangent1.y) * (baseEdge.tangent0.y + baseEdge.tangent1.y))
+                            < constants.maxDistanceForAdjacentNodes_by4
+                            then
+                                results[outerNodeId] = true
+                            end
+                        end
+                    end
+                end
+            end
+        end
+
+        results[nodeId] = true
+        logger.print('getAdjacentNodes is about to return') logger.debugPrint(results)
+        return results
+    end,
     ---returns indexed table of edgeObjectIds
     ---@param refModelId1 integer
     ---@param refModelId2 integer
@@ -621,7 +653,7 @@ funcs.getGiveWaySignalsOrStations = function(bitsBeforeIntersection_indexedBy_in
 
     local recursiveFuncs
     recursiveFuncs = {
-        getNext4 = function(intersectionNodeId, bitsBeforeIntersection_indexedBy_inEdgeId, edgeId, commonNodeId, inEdgeId, isInEdgeDirTowardsIntersection, nSegmentsFromIntersection)
+        getNext4 = function(intersectionNodeId, adjacentNodes_indexed, bitsBeforeIntersection_indexedBy_inEdgeId, edgeId, commonNodeId, inEdgeId, isInEdgeDirTowardsIntersection, nSegmentsFromIntersection)
             logger.print('_getNext4 starting, edgeId = ' .. edgeId .. ', commonNodeId = ' .. commonNodeId)
             -- logger.print('bitsBeforeIntersection_indexedBy_inEdgeId[edgeId] =') logger.debugPrint(bitsBeforeIntersection_indexedBy_inEdgeId[edgeId])
             if checkedEdges_indexedBy_intersectionNodeId_edgeId[intersectionNodeId][edgeId] then
@@ -659,8 +691,18 @@ funcs.getGiveWaySignalsOrStations = function(bitsBeforeIntersection_indexedBy_in
                 end
                 -- check if the intersection is reachable from both ends of the edge, there could be a light blocking it or a cross instead of a switch
                 -- You might check this before checking the lights, and leave if isPath is false LOLLO TODO check if it is faster that way
-                if funcs.getIsPathFromEdgeToNode(edgeId, intersectionNodeId, constants.maxDistanceFromIntersection) then
+                -- repeat the check for adjacent nodes
+                local isPathFromEdgeToNodes = false
+                for nodeId, _ in pairs(adjacentNodes_indexed) do
+                    if funcs.getIsPathFromEdgeToNode(edgeId, nodeId, constants.maxDistanceFromIntersection) then
+                        isPathFromEdgeToNodes = true
+                        break
+                    end
+                end
+                if isPathFromEdgeToNodes then
                     _addEdgeGivingWay(edgeId, baseEdge, commonNodeId, intersectionNodeId, inEdgeId, isInEdgeDirTowardsIntersection)
+                else
+                    logger.print('no path found from edge ' .. (edgeId or 'NIL') .. ' to node ' .. (intersectionNodeId or 'NIL'))
                 end
                 return {
                     inEdgeId = inEdgeId,
@@ -706,10 +748,11 @@ funcs.getGiveWaySignalsOrStations = function(bitsBeforeIntersection_indexedBy_in
                 }
             end
         end,
-        getNext3 = function(intersectionNodeId, bitsBeforeIntersection_indexedBy_inEdgeId, edgeId, commonNodeId, inEdgeId, isInEdgeDirTowardsIntersection, nSegmentsFromIntersection, nSegmentsChecked)
+        getNext3 = function(intersectionNodeId, adjacentNodes_indexed, bitsBeforeIntersection_indexedBy_inEdgeId, edgeId, commonNodeId, inEdgeId, isInEdgeDirTowardsIntersection, nSegmentsFromIntersection, nSegmentsChecked)
             logger.print('_getNext3 starting, edgeId = ' .. edgeId .. ', commonNodeId = ' .. commonNodeId)
             local next = recursiveFuncs.getNext4(
                 intersectionNodeId,
+                adjacentNodes_indexed,
                 bitsBeforeIntersection_indexedBy_inEdgeId,
                 edgeId,
                 commonNodeId,
@@ -725,6 +768,7 @@ funcs.getGiveWaySignalsOrStations = function(bitsBeforeIntersection_indexedBy_in
                     local connectedEdgeIds = funcs.getConnectedEdgeIdsExceptOne(edgeId, next.newNodeId)
                     recursiveFuncs.getNext2(
                         intersectionNodeId,
+                        adjacentNodes_indexed,
                         bitsBeforeIntersection_indexedBy_inEdgeId,
                         connectedEdgeIds,
                         next.newNodeId,
@@ -739,12 +783,13 @@ funcs.getGiveWaySignalsOrStations = function(bitsBeforeIntersection_indexedBy_in
                 end
             end
         end,
-        getNext2 = function(intersectionNodeId, bitsBeforeIntersection_indexedBy_inEdgeId, connectedEdgeIds, commonNodeId, inEdgeId, isInEdgeDirTowardsIntersection, nSegmentsFromIntersection, nSegmentsChecked)
+        getNext2 = function(intersectionNodeId, adjacentNodes_indexed, bitsBeforeIntersection_indexedBy_inEdgeId, connectedEdgeIds, commonNodeId, inEdgeId, isInEdgeDirTowardsIntersection, nSegmentsFromIntersection, nSegmentsChecked)
             logger.print('_getNext2 starting, commonNodeId = ' .. commonNodeId .. ', connectedEdgeIds =') logger.debugPrint(connectedEdgeIds)
             nSegmentsFromIntersection = nSegmentsFromIntersection + 1
             for _, edgeId in pairs(connectedEdgeIds) do
                 recursiveFuncs.getNext3(
                     intersectionNodeId,
+                    adjacentNodes_indexed,
                     bitsBeforeIntersection_indexedBy_inEdgeId,
                     edgeId,
                     commonNodeId,
@@ -761,8 +806,10 @@ funcs.getGiveWaySignalsOrStations = function(bitsBeforeIntersection_indexedBy_in
         checkedEdges_indexedBy_intersectionNodeId_edgeId[intersectionNodeId] = {}
         local connectedEdgeIds = funcs.getConnectedEdgeIdsExceptSome(bitsBeforeIntersection_indexedBy_inEdgeId, intersectionNodeId)
         logger.print('_getNext1 got intersectionNodeId = ' .. intersectionNodeId .. ', connectedEdgeIds =') logger.debugPrint(connectedEdgeIds)
+        local adjacentNodes_indexed = funcs.getAdjacentNodes_indexed(intersectionNodeId)
         recursiveFuncs.getNext2(
             intersectionNodeId,
+            adjacentNodes_indexed,
             bitsBeforeIntersection_indexedBy_inEdgeId,
             connectedEdgeIds,
             intersectionNodeId,
