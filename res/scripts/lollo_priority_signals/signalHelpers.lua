@@ -133,6 +133,33 @@ local _isSignalAgainstEdgeDirection = function(signalId)
 
     return false, edgeId
 end
+---@param objectId integer
+---@return boolean
+local _isObjectASignal = function(objectId)
+    if not(_isValidAndExistingId(objectId)) then return false end
+
+    local signalList = api.engine.getComponent(objectId, api.type.ComponentType.SIGNAL_LIST)
+    if signalList == nil or signalList.signals == nil then return false end
+
+    local signal = signalList.signals[1] -- signalList.signals is userdata
+    if signal == nil then return false end
+
+    -- signal.type == 0 -- two-way signal
+    -- signal.type == 1 -- one-way signal
+    -- signal.type == 2 -- waypoint
+    return (signal.type == 0) or (signal.type == 1)
+end
+---@param baseEdge any
+---@return boolean
+local _isEdgeWithSignals = function (baseEdge)
+    if baseEdge == nil or type(baseEdge.objects) ~= 'table' then return false end
+
+    for _, object in pairs(baseEdge.objects) do
+        local objectId = object[1]
+        if _isObjectASignal(objectId) then return true end
+    end
+    return false
+end
 ---returns 0 for no one-way signal, 1 for one-way signal along, 2 for one-way signal against
 ---@param signalId integer
 ---@return 0|1|2
@@ -200,7 +227,7 @@ local funcs = {
             for _, edgeId in pairs(connectedEdgeIds_userdata) do -- cannot use connectedEdgeIdsUserdata[index] here
                 if _isValidAndExistingId(edgeId) then
                     local baseEdge = api.engine.getComponent(edgeId, api.type.ComponentType.BASE_EDGE)
-                    if baseEdge ~= nil and #baseEdge.objects == 0 then
+                    if not(_isEdgeWithSignals(baseEdge)) then
                         local outerNodeId = (baseEdge.node0 == nodeId) and baseEdge.node1 or baseEdge.node0
                         if #_map[outerNodeId] > 2 then -- this node is a joint
                             if ((baseEdge.tangent0.x + baseEdge.tangent1.x) * (baseEdge.tangent0.x + baseEdge.tangent1.x)
