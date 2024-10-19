@@ -230,12 +230,12 @@ local funcs = {
                     if not(_isEdgeWithSignals(baseEdge)) then
                         local outerNodeId = (baseEdge.node0 == nodeId) and baseEdge.node1 or baseEdge.node0
                         if #_map[outerNodeId] > 2 then -- this node is a joint
-                            if ((baseEdge.tangent0.x + baseEdge.tangent1.x) * (baseEdge.tangent0.x + baseEdge.tangent1.x)
-                            + (baseEdge.tangent0.y + baseEdge.tangent1.y) * (baseEdge.tangent0.y + baseEdge.tangent1.y))
-                            < constants.maxDistanceForAdjacentNodes_by4
-                            then
-                                results[outerNodeId] = true
-                            end
+                            -- if ((baseEdge.tangent0.x + baseEdge.tangent1.x) * (baseEdge.tangent0.x + baseEdge.tangent1.x)
+                            -- + (baseEdge.tangent0.y + baseEdge.tangent1.y) * (baseEdge.tangent0.y + baseEdge.tangent1.y))
+                            -- < constants.maxDistanceForAdjacentNodes_by4
+                            -- then
+                            results[outerNodeId] = true
+                            -- end
                         end
                     end
                 end
