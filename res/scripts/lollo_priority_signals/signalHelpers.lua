@@ -309,24 +309,16 @@ local funcs = {
 
         return signalList.signals[1].type == 1
     end,
-    -- LOLLO TODO make this more efficient and make sure it works as intended
+    ---checks if there is a path from both ends of an edge to a node, starting from the edge
+    ---@param edgeId integer
+    ---@param nodeId integer
+    ---@param maxDistance number
+    ---@return boolean
     getIsPathFromEdgeToNode = function(edgeId, nodeId, maxDistance)
-        local counters = {}
-
-        -- local maxIndex = 0
-        -- local baseEdge = api.engine.getComponent(edgeId, api.type.ComponentType.BASE_EDGE)
-        -- for _, object in pairs(baseEdge.objects) do
-        --     local objectId = object[1]
-        --     local signalList = api.engine.getComponent(objectId, api.type.ComponentType.SIGNAL_LIST)
-        --     if signalList and signalList.signals and signalList.signals[1] then
-        --         local index = signalList.signals[1].edgePr.index
-        --         if index > maxIndex then maxIndex = index end
-        --     end
-        -- end
-
+        local successes = {}
         local maxIndex = #api.engine.getComponent(edgeId, api.type.ComponentType.TRANSPORT_NETWORK).edges - 1
 
-        for i = 0, maxIndex, 1 do
+        for i = 0, maxIndex, 1 do -- signals split edges in multiple chunks
             local edge1IdTyped = api.type.EdgeId.new(edgeId, i)
             local edgeIdDir1False = api.type.EdgeIdDirAndLength.new(edge1IdTyped, false, 0)
             local edgeIdDir1True = api.type.EdgeIdDirAndLength.new(edge1IdTyped, true, 0)
@@ -340,18 +332,17 @@ local funcs = {
                 },
                 maxDistance
             )
-            counters[i] = 0
+            successes[i] = 0
             -- logger.print('index = ' .. i .. ', myPath =') logger.debugPrint(myPath)
+            -- print('index = ' .. i .. ', myPath =') debugPrint(myPath)
             for _, value in pairs(myPath) do
-                -- remove duplicates arising from traffic light or waypoints on edges, which have the same entity but a higher index.
-                if #counters == 0 or counters[#counters] ~= value.entity then
-                    counters[i] = counters[i] + 1
-                end
+                successes[i] = 1
+                break
             end
         end
 
         for i = 0, maxIndex, 1 do
-            if counters[i] == 0 then return false end
+            if successes[i] == 0 then return false end
         end
         return true
     end,
@@ -726,7 +717,7 @@ funcs.getGiveWaySignalsOrStations = function(bitsBeforeIntersection_indexedBy_in
             if #signalIdsInEdge > 0 then -- this is it
                 logger.print('this edge has signals')
                 -- get out if there is a priority signal on this edge, you don't want to compete.
-                -- If there are more signals on the same edge, tough, get out anyway. LOLLO TODO try to avoid this.
+                -- If there are more signals on the same edge, tough, get out anyway. LOLLO TODO try to avoid this: for now, we could skip it
                 for _, signalId in pairs(signalIdsInEdge) do
                     if prioritySignalIds_indexed[signalId] then
                         logger.print('one of these signals has priority, don\'t want to compete, leaving')
