@@ -717,7 +717,7 @@ funcs.getGiveWaySignalsOrStations = function(bitsBeforeIntersection_indexedBy_in
             if #signalIdsInEdge > 0 then -- this is it
                 logger.print('this edge has signals')
                 -- get out if there is a priority signal on this edge, you don't want to compete.
-                -- If there are more signals on the same edge, tough, get out anyway. LOLLO TODO try to avoid this: for now, we could skip it
+                -- If there are more signals on the same edge, tough, get out anyway.
                 for _, signalId in pairs(signalIdsInEdge) do
                     if prioritySignalIds_indexed[signalId] then
                         logger.print('one of these signals has priority, don\'t want to compete, leaving')
@@ -749,8 +749,7 @@ funcs.getGiveWaySignalsOrStations = function(bitsBeforeIntersection_indexedBy_in
                     isGoAhead = false,
                     isInEdgeDirTowardsIntersection = isInEdgeDirTowardsIntersection
                 }
-            elseif frozenEdges_indexed[edgeId] or
-            funcs.isEdgeFrozenInStationOrDepot_FAST(edgeId) then -- station
+            elseif frozenEdges_indexed[edgeId] or funcs.isEdgeFrozenInStationOrDepot_FAST(edgeId) then -- station or depot, try the buffer first
                 logger.print('this edge is frozen in a station or a depot')
                 frozenEdges_indexed[edgeId] = true
                 -- check if the intersection is reachable from both ends of the edge, there could be a light blocking it or a cross instead of a switch
