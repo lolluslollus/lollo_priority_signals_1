@@ -726,9 +726,7 @@ funcs.getGiveWaySignalsOrStations = function(bitsBeforeIntersection_indexedBy_in
             if #signalIdsInEdge > 0 then -- this is it
                 logger.print('this edge has signals')
                 -- get out if there is a priority signal on this edge, you don't want to compete.
-                -- If there are more signals on the same edge, tough, get out anyway.
-                -- LOLLO TODO you shouldn't tho, only leave if the prio signal leads into the intersection
-                -- you can check it with a func or fix it with guiEngine.57, easier.
+                -- If there are more signals on the same edge, tough, get out anyway. LOLLO TODO try to avoid this.
                 for _, signalId in pairs(signalIdsInEdge) do
                     if prioritySignalIds_indexed[signalId] then
                         logger.print('one of these signals has priority, don\'t want to compete, leaving')

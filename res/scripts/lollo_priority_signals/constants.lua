@@ -17,6 +17,7 @@ local constants = {
     events = {
         hide_warnings = 'hide_warnings',
         removeSignal = 'remove_signal',
+        removeSignals = 'remove_signals',
         toggle_notaus = 'toggle_notaus',
     },
 
