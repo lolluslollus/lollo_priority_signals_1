@@ -296,30 +296,30 @@ _mSystemTime_msec = 138436462, _mLastRefreshGraph_systemTime_msec = 0
 _getNext3 starting, edgeId = 17746, commonNodeId = 14909
 _getNext4 starting, edgeId = 17746, commonNodeId = 14909
 I checked this edge already, leaving
-bitsBehindIntersection_indexedBy_intersectionNodeId_edgeIdGivingWay =
+bitsBehindIntersection_indexedBy_intersectionNodeId_outEdgeId =
 {
   [14909] = {
     [13630] = {
       inEdgeId = 13568,
-      isGiveWayEdgeDirTowardsIntersection = false,
+      isOutEdgeDirTowardsIntersection = false,
       isInEdgeDirTowardsIntersection = false,
       nodeIdTowardsIntersection = 14910,
     },
     [13682] = {
       inEdgeId = 13568,
-      isGiveWayEdgeDirTowardsIntersection = false,
+      isOutEdgeDirTowardsIntersection = false,
       isInEdgeDirTowardsIntersection = false,
       nodeIdTowardsIntersection = 14365,
     },
     [13715] = {
       inEdgeId = 13568,
-      isGiveWayEdgeDirTowardsIntersection = true,
+      isOutEdgeDirTowardsIntersection = true,
       isInEdgeDirTowardsIntersection = false,
       nodeIdTowardsIntersection = 14940,
     },
     [13754] = {
       inEdgeId = 13568,
-      isGiveWayEdgeDirTowardsIntersection = false,
+      isOutEdgeDirTowardsIntersection = false,
       isInEdgeDirTowardsIntersection = false,
       nodeIdTowardsIntersection = 14878,
     },

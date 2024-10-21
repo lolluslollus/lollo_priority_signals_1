@@ -31,7 +31,7 @@ local _mIsGraphDone = false
 
 ---@type bitsBeforeIntersection_indexedBy_intersectionNodeId_inEdgeId
 local _mBitsBeforeIntersection_indexedBy_intersectionNodeId_inEdgeId = {}
----@type bitsBehindIntersection_indexedBy_intersectionNodeId_edgeIdGivingWay
+---@type bitsBehindIntersection_indexedBy_intersectionNodeId_outEdgeId
 local _mBitsBehindIntersection_indexedBy_intersectionNodeId_edgeIdGivingWay = {}
 ---@type table<integer, integer[]>
 local _mInEdgeIdsBehindIntersections_indexedBy_edgeIdGivingWay = {}
@@ -391,11 +391,11 @@ local _actions = {
         logger.print('after attaching the chains, bitsBeforeIntersection_indexedBy_intersectionNodeId_inEdgeId =') logger.debugPrint(bitsBeforeIntersection_indexedBy_intersectionNodeId_inEdgeId)
         coroutine.yield()
 
-        local bitsBehindIntersection_indexedBy_intersectionNodeId_edgeIdGivingWay = signalHelpers.getGiveWaySignalsOrStations(bitsBeforeIntersection_indexedBy_intersectionNodeId_inEdgeId, prioritySignalIds_indexed)
-        logger.print('bitsBehindIntersection_indexedBy_intersectionNodeId_edgeIdGivingWay =') logger.debugPrint(bitsBehindIntersection_indexedBy_intersectionNodeId_edgeIdGivingWay)
+        local bitsBehindIntersection_indexedBy_intersectionNodeId_outEdgeIdGivingWay = signalHelpers.getGiveWaySignalsOrStations(bitsBeforeIntersection_indexedBy_intersectionNodeId_inEdgeId, prioritySignalIds_indexed)
+        logger.print('bitsBehindIntersection_indexedBy_intersectionNodeId_outEdgeIdGivingWay =') logger.debugPrint(bitsBehindIntersection_indexedBy_intersectionNodeId_outEdgeIdGivingWay)
         local inEdgeIdsBehindIntersections_indexedBy_edgeIdGivingWay = {}
         local intersectionNodeIds_indexedBy_edgeIdGivingWay = {}
-        for intersectionNodeId, bitsBehindIntersection_indexedBy_edgeIdGivingWay in pairs(bitsBehindIntersection_indexedBy_intersectionNodeId_edgeIdGivingWay) do
+        for intersectionNodeId, bitsBehindIntersection_indexedBy_edgeIdGivingWay in pairs(bitsBehindIntersection_indexedBy_intersectionNodeId_outEdgeIdGivingWay) do
             for edgeIdGivingWay, bitBehindIntersection in pairs(bitsBehindIntersection_indexedBy_edgeIdGivingWay) do
                 if not(inEdgeIdsBehindIntersections_indexedBy_edgeIdGivingWay[edgeIdGivingWay]) then
                     inEdgeIdsBehindIntersections_indexedBy_edgeIdGivingWay[edgeIdGivingWay] = {bitBehindIntersection.inEdgeId}
@@ -428,7 +428,7 @@ local _actions = {
         end
 
         _mBitsBeforeIntersection_indexedBy_intersectionNodeId_inEdgeId = bitsBeforeIntersection_indexedBy_intersectionNodeId_inEdgeId
-        _mBitsBehindIntersection_indexedBy_intersectionNodeId_edgeIdGivingWay = bitsBehindIntersection_indexedBy_intersectionNodeId_edgeIdGivingWay
+        _mBitsBehindIntersection_indexedBy_intersectionNodeId_edgeIdGivingWay = bitsBehindIntersection_indexedBy_intersectionNodeId_outEdgeIdGivingWay
         _mInEdgeIdsBehindIntersections_indexedBy_edgeIdGivingWay = inEdgeIdsBehindIntersections_indexedBy_edgeIdGivingWay
         _mIntersectionNodeIds_indexedBy_edgeIdGivingWay = intersectionNodeIds_indexedBy_edgeIdGivingWay
         _mLastRefreshGraph_systemTime_msec = os.clock() * 1000
@@ -516,7 +516,7 @@ local _actions = {
                                         --         -- the belly of the train has not passed the intersection yet
                                         --         if currentMovePathBit.edgeId.entity == edgeIdGivingWay then
                                         --             -- stop the train if it is heading for the intersection (probably redundant by now)
-                                        --             if currentMovePathBit.dir == bitBehindIntersection.isGiveWayEdgeDirTowardsIntersection then
+                                        --             if currentMovePathBit.dir == bitBehindIntersection.isOutEdgeDirTowardsIntersection then
                                         --                 if not(api.engine.getComponent(vehicleId, api.type.ComponentType.TRANSPORT_VEHICLE).userStopped) then
                                         --                     if isStopAtOnce or (p == pp) then
                                         --                         _utils._stopAtOnce(vehicleId)
