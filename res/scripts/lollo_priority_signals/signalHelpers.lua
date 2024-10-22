@@ -315,7 +315,7 @@ local funcs = {
     ---@param maxDistance number
     ---@return boolean
     getIsPathFromEdgeToNode = function(edgeId, nodeId, maxDistance)
-        local successes = {}
+        local isPathsFound = {}
         local maxIndex = #api.engine.getComponent(edgeId, api.type.ComponentType.TRANSPORT_NETWORK).edges - 1
 
         for i = 0, maxIndex, 1 do -- signals split edges in multiple chunks
@@ -332,18 +332,16 @@ local funcs = {
                 },
                 maxDistance
             )
-            successes[i] = 0
+            isPathsFound[i] = false
             -- logger.print('index = ' .. i .. ', myPath =') logger.debugPrint(myPath)
             -- print('index = ' .. i .. ', myPath =') debugPrint(myPath)
             for _, value in pairs(myPath) do
-                successes[i] = 1
+                isPathsFound[i] = true
                 break
             end
+            if not(isPathsFound[i]) then return false end
         end
 
-        for i = 0, maxIndex, 1 do
-            if successes[i] == 0 then return false end
-        end
         return true
     end,
     isEdgeFrozen_FAST = function(edgeId)
