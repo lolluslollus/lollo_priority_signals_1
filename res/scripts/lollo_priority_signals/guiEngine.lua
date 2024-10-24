@@ -48,35 +48,29 @@ return {
             then
                 local modelId = args.proposal.proposal.edgeObjectsToAdd[1].modelInstance.modelId
                 if modelId == _signalModelId_EraA or modelId == _signalModelId_EraC or modelId == _signalModelId_Invisible then
-                    local signalId, edgeId, trackTypeIndex =
+                    local newSignalId, edgeId, trackTypeIndex =
                         args.proposal.proposal.edgeObjectsToAdd[1].resultEntity,
                         args.proposal.proposal.edgeObjectsToAdd[1].segmentEntity,
                         args.proposal.proposal.addedSegments[1].trackEdge.trackType
-                    logger.print('streetTerminalBuilder - signalId =') logger.debugPrint(signalId)
+                    logger.print('streetTerminalBuilder - newSignalId =') logger.debugPrint(newSignalId)
                     logger.print('streetTerminalBuilder - edgeId =') logger.debugPrint(edgeId)
-                    -- automatically destroy two-way priority signals as soon as they are built
-                    -- if not(signalHelpers.isSignalOneWay(signalId)) then
-                    --     _sendScriptEvent(constants.events.removeSignal, {objectId = signalId})
-                    --     -- LOLLO TODO issue a warning to the user
-                    -- -- automatically destroy one-way priority signals built before, if there is a new one on the same edge.
-                    -- else
-                        local prioritySignalIdsInEdge = {
-                            table.unpack(signalHelpers.getObjectIdsInEdge(edgeId, _signalModelId_EraA)),
-                            table.unpack(signalHelpers.getObjectIdsInEdge(edgeId, _signalModelId_EraC)),
-                            table.unpack(signalHelpers.getObjectIdsInEdge(edgeId, _signalModelId_Invisible)),
-                        }
-                        logger.print('streetTerminalBuilder - prioritySignalIdsInEdge =') logger.debugPrint(prioritySignalIdsInEdge)
-                        if #prioritySignalIdsInEdge > 1 then
-                            local objectIdToBeRemoved
-                            for _, objectId in pairs(prioritySignalIdsInEdge) do
-                                if objectId ~= signalId then
-                                    _sendScriptEvent(constants.events.removeSignal, {objectId = objectId})
-                                    -- LOLLO TODO issue a warning to the user
-                                    break
-                                end
+                    -- this destroys the other priority signals on the same edge as soon as a second priority signal is added:
+                    local prioritySignalIdsInEdge = {
+                        table.unpack(signalHelpers.getObjectIdsInEdge(edgeId, _signalModelId_EraA)),
+                        table.unpack(signalHelpers.getObjectIdsInEdge(edgeId, _signalModelId_EraC)),
+                        table.unpack(signalHelpers.getObjectIdsInEdge(edgeId, _signalModelId_Invisible)),
+                    }
+                    logger.print('streetTerminalBuilder - prioritySignalIdsInEdge =') logger.debugPrint(prioritySignalIdsInEdge)
+                    if #prioritySignalIdsInEdge > 1 then
+                        local objectIdToBeRemoved
+                        for _, objectId in pairs(prioritySignalIdsInEdge) do
+                            if objectId ~= newSignalId then
+                                _sendScriptEvent(constants.events.removeSignal, {objectId = objectId})
+                                -- LOLLO TODO issue a warning to the user
+                                break
                             end
                         end
-                    -- end
+                    end
                 end
             end
         elseif (name == 'select' and id == 'mainView') then

@@ -4,8 +4,10 @@ local constants = {
     maxNChainedPrioritySignalsBeforeIntersection = 4, -- allow adding max N priority signals before an intersection
     maxNSegmentsBeforeIntersection = 16, -- seek intersections max N segments behind priority signal
     maxNSegmentsBeforePrioritySignal = 2, -- seek segments max N segments ahead of priority signal
-    maxNSegmentsBehindIntersection = 8, -- seek segments max N segments behind intersection
+    maxNSegmentsBehindIntersection = 16, -- seek segments max N segments behind intersection
     maxDistanceFromIntersection = 500, -- seek edges max 500 m from intersection
+    -- LOLLO TODO this might need increasing or removing the check altogether - removed for now
+    -- maxDistanceForAdjacentNodes_by4 = 40000, -- (power 2 of the 2-fold of) the max distance between two nodes, to consider them adjacent
 
     numGetEdgeObjectsPerTick = 50,
     numGetGraphCoroutineResumesPerTick = 5,
@@ -15,6 +17,7 @@ local constants = {
     events = {
         hide_warnings = 'hide_warnings',
         removeSignal = 'remove_signal',
+        removeSignals = 'remove_signals',
         toggle_notaus = 'toggle_notaus',
     },
 

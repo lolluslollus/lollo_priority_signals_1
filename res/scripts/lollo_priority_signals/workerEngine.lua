@@ -238,6 +238,71 @@ local _utils = {
             end
         )
     end,
+    replaceEdgeWithSameRemovingObjects = function(edgeId, objectIdsToRemove)
+        logger.print('_replaceEdgeWithSameRemovingObjects starting, edgeId = ' .. (edgeId or 'NIL'))
+        if not(signalHelpers.isValidAndExistingId(edgeId)) then return end
+        if type(objectIdsToRemove) ~= 'table' or #objectIdsToRemove == 0 then return end
+
+        logger.print('_replaceEdgeWithSameRemovingObjects found, the edge id is valid')
+        local oldEdge = api.engine.getComponent(edgeId, api.type.ComponentType.BASE_EDGE)
+        local oldEdgeTrack = api.engine.getComponent(edgeId, api.type.ComponentType.BASE_EDGE_TRACK)
+        if oldEdge == nil or oldEdgeTrack == nil then return false end
+
+        local newEdge = api.type.SegmentAndEntity.new()
+        newEdge.entity = -1
+        newEdge.type = 1 -- 0 == road, 1 == rail
+        -- newEdge.comp = oldEdge -- not good enough if I want to remove objects, the api moans
+        newEdge.comp.node0 = oldEdge.node0
+        newEdge.comp.node1 = oldEdge.node1
+        newEdge.comp.tangent0 = oldEdge.tangent0
+        newEdge.comp.tangent1 = oldEdge.tangent1
+        newEdge.comp.type = oldEdge.type -- respect bridge or tunnel
+        newEdge.comp.typeIndex = oldEdge.typeIndex -- respect type of bridge or tunnel
+        newEdge.playerOwned = api.engine.getComponent(edgeId, api.type.ComponentType.PLAYER_OWNED)
+        newEdge.trackEdge = oldEdgeTrack
+
+        local objectIdsToRemove_indexed = {}
+        for _, objectId in pairs(objectIdsToRemove) do
+            objectIdsToRemove_indexed[objectId] = true
+        end
+        local edgeObjects = {}
+        for _, edgeObj in pairs(oldEdge.objects) do
+            if not(objectIdsToRemove_indexed[edgeObj[1]]) and signalHelpers.isValidId(edgeObj[1]) then
+                table.insert(edgeObjects, { edgeObj[1], edgeObj[2] })
+            end
+        end
+        if #edgeObjects > 0 then
+            newEdge.comp.objects = edgeObjects -- LOLLO NOTE cannot insert directly into edge0.comp.objects
+        else
+            logger.print('_replaceEdgeWithSameRemovingObjects: no edge objects found to add')
+            newEdge.comp.objects = oldEdge.objects
+        end
+
+        local proposal = api.type.SimpleProposal.new()
+        proposal.streetProposal.edgesToRemove[1] = edgeId
+        proposal.streetProposal.edgesToAdd[1] = newEdge
+        local count = 1
+        for objectId, _ in pairs(objectIdsToRemove_indexed) do
+            if signalHelpers.isValidAndExistingId(objectId) then
+                proposal.streetProposal.edgeObjectsToRemove[count] = objectId
+                count = count + 1
+            end
+        end
+
+        local context = api.type.Context:new()
+        -- context.checkTerrainAlignment = true -- default is false, true gives smoother Z
+        -- context.cleanupStreetGraph = true -- default is false
+        -- context.gatherBuildings = true  -- default is false
+        -- context.gatherFields = true -- default is true
+        context.player = api.engine.util.getPlayer() -- default is -1
+
+        api.cmd.sendCommand(
+            api.cmd.make.buildProposal(proposal, context, true),
+            function(result, success)
+                logger.print('LOLLO _replaceEdgeWithSameRemovingObjects success = ') logger.debugPrint(success)
+            end
+        )
+    end,
     ---@param tab table|any[]
     ---@param isIgnoreNil? boolean
     ---@return boolean
@@ -582,6 +647,8 @@ return {
 
                 if name == constants.events.removeSignal then
                     _utils.replaceEdgeWithSameRemovingObject(args.objectId)
+                elseif name == constants.events.removeSignals then
+                    _utils.replaceEdgeWithSameRemovingObjects(args.edgeId, args.objectIds)
                 elseif name == constants.events.toggle_notaus then
                     logger.print('state before =') logger.debugPrint(stateHelpers.getState())
                     local state = stateHelpers.getState()

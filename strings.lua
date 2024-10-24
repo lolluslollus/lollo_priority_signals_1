@@ -8,7 +8,7 @@ function data()
 Place these before an intersection and ordinary signals (or a station) behind. Trains entering the intersection via priority signals will have priority over those entering via ordinary signals (or from the station).
 
 Getting priority:
-To prioritise trains over a longer stretch of track, place more priority signals farther ahead of the intersection. You can add up to ]] .. constants.maxNChainedPrioritySignalsBeforeIntersection .. [[. If you have a station track closely preceding a priority signal, trains on it will receive priority as soon as they start.
+To prioritise trains over a longer stretch of track, place more priority signals farther ahead of the intersection. You can add up to ]] .. constants.maxNChainedPrioritySignalsBeforeIntersection .. [[ of those. If you have a station track closely preceding a priority signal, trains on it will receive priority as soon as they start.
 If you place no priority signals on one branch, or you place them too far from the intersection or from each other (see the notes), trains entering the intersection from that branch will not get priority. 
 
 Giving priority:
@@ -21,7 +21,7 @@ If you place no ordinary signals or stations on one branch, or you place them to
 4) Priority signals are expensive, only use them where you really need them.
 5) Every branch linked to an intersection with priority signals needs a signal (of any type) near the intersection.
 6) Some mods such as advanced statistics or digital displays hog game_script.update(). The game can only take so much, so you might need to choose.
-7) You can use invisible priority signals and decorate them with functionless signals from your mod.
+7) You can use invisible priority signals and decorate them with functionless signals from some mod.
 			]],
             ["Invisible_Signal_Name"] = "Invisible Priority Path Signal",
             ["ModName"] = "Priority signals for tracks",
