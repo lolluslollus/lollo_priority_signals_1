@@ -722,29 +722,8 @@ funcs.getGiveWaySignalsOrStations = function(bitsBeforeIntersection_indexedBy_in
                         return { isGoAhead = false }
                     end
                 end
---[[            
-                -- check if the intersection is reachable from both ends of the edge, there could be a light blocking it or a cross instead of a switch
-                -- You might check this before checking the lights, and leave if isPath is false LOLLO TODO check if it is faster that way
-                -- repeat the check for adjacent nodes, useful with complex junctions
-                local isPathFromEdgeToNodes = false
-                for nodeId, _ in pairs(adjacentNodes_indexed) do
-                    if funcs.getIsPathFromEdgeToNode(edgeId, nodeId, constants.maxDistanceFromIntersection) then
-                        isPathFromEdgeToNodes = true
-                        break
-                    end
-                end
-                if isPathFromEdgeToNodes then
-                    -- LOLLO TODO write this away even if there is no path and check it after the outer loop. 
-                    _addEdgeGivingWay(edgeId, baseEdge, commonNodeId, intersectionNodeId, inEdgeId, isInEdgeDirTowardsIntersection)
-                else
-                    -- LOLLO TODO If there is no path from intersection to edge (new func?), write away the edge as an exit.
-                    -- After the loop for one high prio intersection, check every path from that intersection to its exits
-                    -- and add edges giving way if they appear in any of those paths - and they are no exits.
-                    -- This is smarter than checking a cluster of nodes like in the last update.
-                    logger.print('no path found from edge ' .. (edgeId or 'NIL') .. ' to node ' .. (intersectionNodeId or 'NIL'))
-                end
-]]
-                -- check if trains can run on the edge out->in, checking the paths from those to all possible intersections is madness
+
+                -- check if trains can run on the edge out->in; checking the paths from those to all possible intersections is madness
                 if funcs.getIsPathFromEdgeToNode(edgeId, commonNodeId, constants.maxDistanceFromIntersection) then
                     _addEdgeGivingWay(edgeId, baseEdge, commonNodeId, intersectionNodeId, inEdgeId, isInEdgeDirTowardsIntersection)
                 else
@@ -758,25 +737,7 @@ funcs.getGiveWaySignalsOrStations = function(bitsBeforeIntersection_indexedBy_in
             elseif frozenEdges_indexed[edgeId] or funcs.isEdgeFrozenInStationOrDepot_FAST(edgeId) then -- station or depot, try the buffer first
                 logger.print('this edge is frozen in a station or a depot')
                 frozenEdges_indexed[edgeId] = true
---[[
-                -- check if the intersection is reachable from both ends of the edge, there could be a light blocking it or a cross instead of a switch
-                -- repeat the check for adjacent nodes, useful with complex junctions
-                local isPathFromEdgeToNodes = false
-                for nodeId, _ in pairs(adjacentNodes_indexed) do
-                    if funcs.getIsPathFromEdgeToNode(edgeId, nodeId, constants.maxDistanceFromIntersection) then
-                        isPathFromEdgeToNodes = true
-                        break
-                    end
-                end
-                if isPathFromEdgeToNodes then
-                    -- LOLLO TODO see above
-                    _addEdgeGivingWay(edgeId, baseEdge, commonNodeId, intersectionNodeId, inEdgeId, isInEdgeDirTowardsIntersection)
-                else
-                    -- LOLLO TODO see above
-                    logger.print('no path found from edge ' .. (edgeId or 'NIL') .. ' to node ' .. (intersectionNodeId or 'NIL'))
-                end
-]]
-                -- check if trains can run on the edge out->in, checking the paths from those to all possible intersections is madness
+                -- check if trains can run on the edge out->in; checking the paths from those to all possible intersections is madness
                 if funcs.getIsPathFromEdgeToNode(edgeId, commonNodeId, constants.maxDistanceFromIntersection) then
                     _addEdgeGivingWay(edgeId, baseEdge, commonNodeId, intersectionNodeId, inEdgeId, isInEdgeDirTowardsIntersection)
                 else

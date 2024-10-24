@@ -71,20 +71,6 @@ return {
                             end
                         end
                     end
-                    -- this destroys all other signals on the same edge as soon as a priority signal is added: getNext4 will be happy
-                    -- however, one can always add non-priority signals later. No, too intrusive.
-                    -- local baseEdge = api.engine.getComponent(edgeId, api.type.ComponentType.BASE_EDGE)
-                    -- local signalIdsToBeRemoved = {}
-                    -- local signalIds = signalHelpers.getSignalIds(baseEdge)
-                    -- for _, signalId in pairs(signalIds) do
-                    --     if newSignalId ~= signalId then
-                    --         signalIdsToBeRemoved[#signalIdsToBeRemoved+1] = signalId
-                    --     end
-                    -- end
-                    -- if #signalIdsToBeRemoved > 0 then
-                    --     _sendScriptEvent(constants.events.removeSignals, {edgeId = edgeId, objectIds = signalIdsToBeRemoved})
-                    --     -- LOLLO TODO issue a warning to the user
-                    -- end
                 end
             end
         elseif (name == 'select' and id == 'mainView') then
