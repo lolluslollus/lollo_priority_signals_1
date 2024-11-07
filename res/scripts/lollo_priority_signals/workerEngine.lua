@@ -25,6 +25,8 @@ local _mLastGameTime_msec = 0
 ---@type number
 local _mSystemTime_msec = 0
 ---@type number
+local _mLastRefreshGraph_gameTime_msec = 0
+---@type number
 local _mLastRefreshGraph_systemTime_msec = 0
 ---@type boolean
 local _mIsGraphDone = false
@@ -33,11 +35,11 @@ local _mIsGraphDone = false
 local _mBitsBeforeIntersection_indexedBy_intersectionNodeId_inEdgeId = {}
 ---@type bitsBehindIntersection_indexedBy_intersectionNodeId_edgeIdGivingWay
 local _mBitsBehindIntersection_indexedBy_intersectionNodeId_edgeIdGivingWay = {}
----@type table<integer, integer[]>
-local _mInEdgeIdsBehindIntersections_indexedBy_edgeIdGivingWay = {}
----@type table<integer, integer[]>
-local _mIntersectionNodeIds_indexedBy_edgeIdGivingWay = {}
----@type table<integer, {gameTimeMsec: number, isStoppedAtOnce: boolean}>
+-- ---@type table<integer, integer[]>
+-- local _mInEdgeIdsBehindIntersections_indexedBy_edgeIdGivingWay = {}
+-- ---@type table<integer, integer[]>
+-- local _mIntersectionNodeIds_indexedBy_edgeIdGivingWay = {}
+---@type table<integer, {firstStopTimeMsec: number, lastStopTimeMsec: number, isStoppedAtOnce: boolean}>
 local _mStopProps_indexedBy_stoppedVehicleIds = {}
 
 local _utils = {
@@ -57,10 +59,22 @@ local _utils = {
             for _, vehicleId in pairs(priorityVehicleIds) do
                 if not(foundVehicleIds_indexed[vehicleId]) then
                     local movePath = api.engine.getComponent(vehicleId, api.type.ComponentType.MOVE_PATH)
+                    --[[
+                        Values for api.type.ComponentType.TRANSPORT_VEHICLE state (there is an enum):
+                        api.type.enum.TransportVehicleState.IN_DEPOT == 0    
+                        api.type.enum.TransportVehicleState.EN_ROUTE == 1
+                        api.type.enum.TransportVehicleState.AT_TERMINAL == 2
+                        api.type.enum.TransportVehicleState.GOING_TO_DEPOT == 3
+
+                        Values for api.type.ComponentType.MOVE_PATH state (no enums):
+                        movePath.running == 0
+                        movePath.state stopping == 1
+                        movePath.state stopped == 2
+                        movePath.state stopped at terminal == 3
+                    ]]
                     -- logger.print('vehicleId = ' .. vehicleId .. '; movePath.state = ' .. movePath.state)
                     -- logger.print('movePath =') logger.debugPrint(movePath)
                     -- if the train has not been stopped (I don't know what enum this is, it is not api.type.enum.TransportVehicleState)
-                    -- if it is at terminal, the state is 3
                     -- if the user stops a train, its movePath will shorten as the train halts, to only include the edges (or expanded nodes) occupied by the train
                     if isGetStoppedVehicles or movePath.state ~= 2 then -- this may cause long-lasting gridlocks
                     -- if isGetStoppedVehicles or movePath.dyn.speed > 0 then -- this may fail to give priority to the second fast train waiting behind the first
@@ -88,60 +102,6 @@ local _utils = {
         end
         return hasRecords, results_indexed
     end,
-    ---only reliable with trains that are not user-stopped
-    ---@param bitsBeforeIntersection_indexedBy_inEdgeId table<integer, { isInEdgeDirTowardsIntersection: boolean, priorityEdgeIds: integer[] }>
-    ---@param isGetStoppedVehicles? boolean also get stopped vehicles, useful for testing
-    ---@return boolean
-    ---@return table<integer, boolean>
-    getPriorityVehicleIdsNEW = function(bitsBeforeIntersection_indexedBy_inEdgeId, isGetStoppedVehicles)
-        logger.print('_getPriorityVehicleIds starting, bitsBeforeIntersection_indexedBy_inEdgeId =') logger.debugPrint(bitsBeforeIntersection_indexedBy_inEdgeId)
-        local results_indexed = {}
-        local hasRecords = false
-        local foundVehicleIds_indexed = {}
-        for inEdgeId, bitBeforeIntersection in pairs(bitsBeforeIntersection_indexedBy_inEdgeId) do
-            -- logger.print('inEdgeId = ' .. inEdgeId .. ', bitBeforeIntersection =') logger.debugPrint(bitBeforeIntersection)
-            local edgeOrVehicleCount = 0
-            for _, priorityEdgeId in pairs(bitBeforeIntersection.priorityEdgeIds) do
-                local priorityVehicleIds = api.engine.system.transportVehicleSystem.getVehicles({priorityEdgeId}, false)
-                for _, vehicleId in pairs(priorityVehicleIds) do
-                    if not(foundVehicleIds_indexed[vehicleId]) then
-                        edgeOrVehicleCount = edgeOrVehicleCount + 1
-                        local movePath = api.engine.getComponent(vehicleId, api.type.ComponentType.MOVE_PATH)
-                        -- logger.print('vehicleId = ' .. vehicleId .. '; movePath.state = ' .. movePath.state)
-                        -- logger.print('movePath =') logger.debugPrint(movePath)
-                        -- if the train has not been stopped (I don't know what enum this is, it is not api.type.enum.TransportVehicleState)
-                        -- if it is at terminal, the state is 3
-                        -- if the user stops a train, its movePath will shorten as the train halts, to only include the edges (or expanded nodes) occupied by the train
-                        if isGetStoppedVehicles or movePath.state ~= 2 then -- this may cause long-lasting gridlocks
-                        -- if isGetStoppedVehicles or movePath.dyn.speed > 0 then -- this may fail to give priority to the second fast train waiting behind the first
-                            for p = movePath.dyn.pathPos.edgeIndex + 1, #movePath.path.edges, 1 do
-                                local currentMovePathBit = movePath.path.edges[p]
-                                -- logger.print('currentMovePathBit =') logger.debugPrint(currentMovePathBit)
-                                if currentMovePathBit.edgeId.entity == inEdgeId then
-                                    -- return trains heading for the intersection
-                                    if currentMovePathBit.dir == bitBeforeIntersection.isInEdgeDirTowardsIntersection then
-                                        results_indexed[vehicleId] = true
-                                        hasRecords = true
-                                        logger.print('vehicle ' .. vehicleId .. ' counted coz is heading for the intersection')
-                                    -- ignore trains heading out of the intersection
-                                    else
-                                        logger.print('vehicle ' .. vehicleId .. ' ignored coz is heading away from the intersection')
-                                    end
-                                    foundVehicleIds_indexed[vehicleId] = true
-                                    break
-                                end
-                            end
-                        end
-                        if edgeOrVehicleCount > 5 then
-                            edgeOrVehicleCount = 0
-                            coroutine.yield()
-                        end
-                    end
-                end
-            end
-        end
-        return hasRecords, results_indexed
-    end,
     ---if a train is not user-stopped, this only checks the edges taken up by the train
     ---@param vehicleIds_indexed table<integer, boolean>
     ---@param edgeOrNodeId integer
@@ -153,7 +113,7 @@ local _utils = {
                 local movePath = api.engine.getComponent(vehicleId, api.type.ComponentType.MOVE_PATH)
                 for p = movePath.dyn.pathPos.edgeIndex + 1, #movePath.path.edges, 1 do
                     if movePath.path.edges[p].edgeId.entity == edgeOrNodeId then
-                        -- logger.print('_isAnyTrainBoundForEdgeOrNode about to return true')
+                        logger.print('_isAnyTrainBoundForEdgeOrNode about to return true, vehicleId = ' .. (vehicleId or 'NIL'))
                         return true
                     end
                 end
@@ -161,6 +121,9 @@ local _utils = {
         end
         -- logger.print('_isAnyTrainBoundForEdgeOrNode about to return false')
         return false
+    end,
+    restart = function(vehicleId)
+        api.cmd.sendCommand(api.cmd.make.setUserStopped(vehicleId, false))
     end,
     stopAtOnce = function(vehicleId)
         api.cmd.sendCommand(
@@ -323,8 +286,9 @@ local _utils = {
 local _mGetGraphCoroutine, _mStartStopTrainsCoroutine
 local _actions = {
     updateGraph = function()
+        _mIsGraphDone = false
         local prioritySignalIds_indexed = signalHelpers.getAllEdgeObjectsWithModelIds_indexed(_mSignalModelId_EraA, _mSignalModelId_EraC, _mSignalModelId_Invisible)
-        logger.print('prioritySignalIds_indexed =') logger.debugPrint(prioritySignalIds_indexed)
+        logger.print('updateGraph started, prioritySignalIds_indexed =') logger.debugPrint(prioritySignalIds_indexed)
         coroutine.yield()
         -- By construction, I cannot have more than one priority signal on any edge.
         -- However, different priority signals might share the same intersection node,
@@ -393,25 +357,25 @@ local _actions = {
 
         local bitsBehindIntersection_indexedBy_intersectionNodeId_edgeIdGivingWay = signalHelpers.getGiveWaySignalsOrStations(bitsBeforeIntersection_indexedBy_intersectionNodeId_inEdgeId, prioritySignalIds_indexed)
         logger.print('bitsBehindIntersection_indexedBy_intersectionNodeId_edgeIdGivingWay =') logger.debugPrint(bitsBehindIntersection_indexedBy_intersectionNodeId_edgeIdGivingWay)
-        local inEdgeIdsBehindIntersections_indexedBy_edgeIdGivingWay = {}
-        local intersectionNodeIds_indexedBy_edgeIdGivingWay = {}
-        for intersectionNodeId, bitsBehindIntersection_indexedBy_edgeIdGivingWay in pairs(bitsBehindIntersection_indexedBy_intersectionNodeId_edgeIdGivingWay) do
-            for edgeIdGivingWay, bitBehindIntersection in pairs(bitsBehindIntersection_indexedBy_edgeIdGivingWay) do
-                if not(inEdgeIdsBehindIntersections_indexedBy_edgeIdGivingWay[edgeIdGivingWay]) then
-                    inEdgeIdsBehindIntersections_indexedBy_edgeIdGivingWay[edgeIdGivingWay] = {bitBehindIntersection.inEdgeId}
-                else
-                    table.insert(inEdgeIdsBehindIntersections_indexedBy_edgeIdGivingWay[edgeIdGivingWay], bitBehindIntersection.inEdgeId)
-                end
+        -- local inEdgeIdsBehindIntersections_indexedBy_edgeIdGivingWay = {}
+        -- local intersectionNodeIds_indexedBy_edgeIdGivingWay = {}
+        -- for intersectionNodeId, bitsBehindIntersection_indexedBy_edgeIdGivingWay in pairs(bitsBehindIntersection_indexedBy_intersectionNodeId_edgeIdGivingWay) do
+        --     for edgeIdGivingWay, bitBehindIntersection in pairs(bitsBehindIntersection_indexedBy_edgeIdGivingWay) do
+                -- if not(inEdgeIdsBehindIntersections_indexedBy_edgeIdGivingWay[edgeIdGivingWay]) then
+                --     inEdgeIdsBehindIntersections_indexedBy_edgeIdGivingWay[edgeIdGivingWay] = {bitBehindIntersection.inEdgeId}
+                -- else
+                --     table.insert(inEdgeIdsBehindIntersections_indexedBy_edgeIdGivingWay[edgeIdGivingWay], bitBehindIntersection.inEdgeId)
+                -- end
 
-                if not(intersectionNodeIds_indexedBy_edgeIdGivingWay[edgeIdGivingWay]) then
-                    intersectionNodeIds_indexedBy_edgeIdGivingWay[edgeIdGivingWay] = {intersectionNodeId}
-                else
-                    table.insert(intersectionNodeIds_indexedBy_edgeIdGivingWay[edgeIdGivingWay], intersectionNodeId)
-                end
-            end
-        end
-        logger.print('inEdgeIdsBehindIntersections_indexedBy_edgeIdGivingWay =') logger.debugPrint(inEdgeIdsBehindIntersections_indexedBy_edgeIdGivingWay)
-        logger.print('intersectionNodeIds_indexedBy_edgeIdGivingWay =') logger.debugPrint(intersectionNodeIds_indexedBy_edgeIdGivingWay)
+                -- if not(intersectionNodeIds_indexedBy_edgeIdGivingWay[edgeIdGivingWay]) then
+                --     intersectionNodeIds_indexedBy_edgeIdGivingWay[edgeIdGivingWay] = {intersectionNodeId}
+                -- else
+                --     table.insert(intersectionNodeIds_indexedBy_edgeIdGivingWay[edgeIdGivingWay], intersectionNodeId)
+                -- end
+        --     end
+        -- end
+        -- logger.print('inEdgeIdsBehindIntersections_indexedBy_edgeIdGivingWay =') logger.debugPrint(inEdgeIdsBehindIntersections_indexedBy_edgeIdGivingWay)
+        -- logger.print('intersectionNodeIds_indexedBy_edgeIdGivingWay =') logger.debugPrint(intersectionNodeIds_indexedBy_edgeIdGivingWay)
 
         -- only change these shared variables when the coroutine that needs them is inactive
         while _mStartStopTrainsCoroutine ~= nil and coroutine.status(_mStartStopTrainsCoroutine) ~= 'dead' do
@@ -429,13 +393,20 @@ local _actions = {
 
         _mBitsBeforeIntersection_indexedBy_intersectionNodeId_inEdgeId = bitsBeforeIntersection_indexedBy_intersectionNodeId_inEdgeId
         _mBitsBehindIntersection_indexedBy_intersectionNodeId_edgeIdGivingWay = bitsBehindIntersection_indexedBy_intersectionNodeId_edgeIdGivingWay
-        _mInEdgeIdsBehindIntersections_indexedBy_edgeIdGivingWay = inEdgeIdsBehindIntersections_indexedBy_edgeIdGivingWay
-        _mIntersectionNodeIds_indexedBy_edgeIdGivingWay = intersectionNodeIds_indexedBy_edgeIdGivingWay
+        -- _mInEdgeIdsBehindIntersections_indexedBy_edgeIdGivingWay = inEdgeIdsBehindIntersections_indexedBy_edgeIdGivingWay
+        -- _mIntersectionNodeIds_indexedBy_edgeIdGivingWay = intersectionNodeIds_indexedBy_edgeIdGivingWay
         _mLastRefreshGraph_systemTime_msec = os.clock() * 1000
+        profileLogger.print('### updateGraph ending, _mLastRefreshGraph_gameTime_msec is about to become', _mLastRefreshGraph_gameTime_msec, _mGameTime_msec)
+        _mLastRefreshGraph_gameTime_msec = _mGameTime_msec
         _mIsGraphDone = true
     end,
     startStopTrains = function()
         -- error('test error') -- What happens if an error occurs in the coroutine? It dies!
+        local startTick_sec = 0
+        local _isProfileLog = profileLogger.isExtendedLog()
+        if _isProfileLog then startTick_sec = os.clock() end
+        local _gameTime_msec = _mGameTime_msec
+        logger.print('startStopTrains starting')
         for intersectionNodeId, bitsBeforeIntersection_indexedBy_inEdgeId in pairs(_mBitsBeforeIntersection_indexedBy_intersectionNodeId_inEdgeId) do
             local hasIncomingPriorityVehicles, incomingPriorityVehicleIds = _utils.getPriorityVehicleIds(bitsBeforeIntersection_indexedBy_inEdgeId)
             -- if logger.isExtendedLog() then
@@ -451,93 +422,96 @@ local _actions = {
                     -- avoid gridlocks: do not stop a slow vehicle if it is on the path of a priority vehicle - unless that priority vehicle is user-stopped
                     if not(_utils.isAnyTrainBoundForEdgeOrNode(incomingPriorityVehicleIds, edgeIdGivingWay))
                     then
-                        -- logger.print('no priority trains are bound for edge ' .. edgeIdGivingWay)
                         local vehicleIdsNearGiveWaySignals = api.engine.system.transportVehicleSystem.getVehicles({edgeIdGivingWay}, false)
-                        logger.print('vehicleIdsNearGiveWaySignals =') logger.debugPrint(vehicleIdsNearGiveWaySignals)
+                        logger.print('edgeIdGivingWay = ' .. (edgeIdGivingWay or 'NIL') .. ' has vehicleIdsNearGiveWaySignals =') logger.debugPrint(vehicleIdsNearGiveWaySignals)
                         for _, vehicleId in pairs(vehicleIdsNearGiveWaySignals) do
-                            local vehicleIdsOnAnyNearbyIntersection = api.engine.system.transportVehicleSystem.getVehicles(_mIntersectionNodeIds_indexedBy_edgeIdGivingWay[edgeIdGivingWay], false)
-                            -- avoid gridlocks: do not stop a vehicle that is already on any intersection where edgeIdGivingWay plays a role
-                            if not(arrayUtils.arrayHasValue(vehicleIdsOnAnyNearbyIntersection, vehicleId)) then
-                                -- MOVE_PATH and getVehicles change when a train is user-stopped:
-                                -- uncovered edges disappear, so the train fails to meet some estimator below and tries to restart,
-                                -- then the next tick will stop it again - or maybe not.
-                                -- to avoid this lurching, if a train is stopped and is near the give-way signal, we just leave it there
-                                if _mStopProps_indexedBy_stoppedVehicleIds[vehicleId] ~= nil then
-                                    if _mStopProps_indexedBy_stoppedVehicleIds[vehicleId].isStoppedAtOnce then
-                                        -- renew the timestamp
-                                        _mStopProps_indexedBy_stoppedVehicleIds[vehicleId] = {gameTimeMsec = _mGameTime_msec, isStoppedAtOnce = true}
-                                    else
-                                        -- there could be multiple intersections where the same edge has different roles: check them all
-                                        local vehicleIdsOnLastEdge = api.engine.system.transportVehicleSystem.getVehicles(
-                                            _mInEdgeIdsBehindIntersections_indexedBy_edgeIdGivingWay[edgeIdGivingWay],
-                                            false
-                                        )
-                                        if arrayUtils.arrayHasValue(vehicleIdsOnLastEdge, vehicleId) then
-                                            -- stop at once if the train is still rolling and on any last edge before any intersection
-                                            _utils.stopAtOnce(vehicleId)
-                                            logger.print('vehicle ' .. vehicleId .. ' already stopped, now ground to a halt')
-                                            _mStopProps_indexedBy_stoppedVehicleIds[vehicleId] = {gameTimeMsec = _mGameTime_msec, isStoppedAtOnce = true}
-                                        else
-                                            -- renew the timestamp
-                                            _mStopProps_indexedBy_stoppedVehicleIds[vehicleId] = {gameTimeMsec = _mGameTime_msec, isStoppedAtOnce = false}
-                                        end
-                                    end
-                                else
-                                    local movePath = api.engine.getComponent(vehicleId, api.type.ComponentType.MOVE_PATH)
-                                    for p = movePath.dyn.pathPos.edgeIndex + 1, #movePath.path.edges, 1 do
-                                        -- if the train is heading for the intersection, and not merely transiting on the give-way bit...
-                                        local currentMovePathBit = movePath.path.edges[p]
-                                        if currentMovePathBit.edgeId.entity == bitBehindIntersection.inEdgeId then
-                                            logger.print('bitBehindIntersection.inEdgeId = ' .. bitBehindIntersection.inEdgeId)
-                                            -- stop the train if it is heading for any intersection, possibly redundant by now
-                                            if currentMovePathBit.dir == bitBehindIntersection.isInEdgeDirTowardsIntersection then
-                                                -- there could be multiple intersections where the same edge has different roles: check them all
-                                                local vehicleIdsOnLastEdge = api.engine.system.transportVehicleSystem.getVehicles(
-                                                    _mInEdgeIdsBehindIntersections_indexedBy_edgeIdGivingWay[edgeIdGivingWay],
-                                                    false
-                                                )
-                                                if arrayUtils.arrayHasValue(vehicleIdsOnLastEdge, vehicleId) then
-                                                    -- stop at once if the train is still rolling and on any last edge before any intersection
-                                                    _utils.stopAtOnce(vehicleId)
-                                                    logger.print('vehicle ' .. vehicleId .. ' just stopped at once')
-                                                    _mStopProps_indexedBy_stoppedVehicleIds[vehicleId] = {gameTimeMsec = _mGameTime_msec, isStoppedAtOnce = true}
-                                                else
-                                                    _utils.stopSlowly(vehicleId)
-                                                    logger.print('vehicle ' .. vehicleId .. ' just stopped slowly')
-                                                    _mStopProps_indexedBy_stoppedVehicleIds[vehicleId] = {gameTimeMsec = _mGameTime_msec, isStoppedAtOnce = false}
-                                                end
-                                                break
+                            -- LOLLO NOTE MOVE_PATH and getVehicles change when a train is user-stopped:
+                            -- uncovered edges disappear, so the train fails to meet some estimator below and tries to restart,
+                            -- then the next tick will stop it again - or maybe not.
+                            -- to avoid this lurching, if a train is stopped and is near the give-way signal, we just leave it there
+                            -- LOLLO NOTE if the vehicle has passed the node, do not stop it to avoid gridlocks.
+                            -- The crude restart below should take care of it.
+                            local _stopPropsOfvehicle = _mStopProps_indexedBy_stoppedVehicleIds[vehicleId]
+                            if _stopPropsOfvehicle ~= nil and _stopPropsOfvehicle.isStoppedAtOnce then
+                                -- vehicle halted: renew the timestamp
+                                _stopPropsOfvehicle.lastStopTimeMsec = _mLastRefreshGraph_gameTime_msec
+                                logger.print('vehicle ' .. vehicleId .. ' just got its stop-at-once timestamp renewed')
+                            else
+                                -- vehicle not halted
+                                local movePath = api.engine.getComponent(vehicleId, api.type.ComponentType.MOVE_PATH)
+                                -- movePath.path.edges[movePath.dyn.pathPos.edgeIndex].edgeId.entity === edgeId where a piece of the train is, not necessarily the head
+                                for p = movePath.dyn.pathPos.edgeIndex + 1, #movePath.path.edges, 1 do
+                                    local currentMovePathBit = movePath.path.edges[p]
+                                    if currentMovePathBit.edgeId.entity == edgeIdGivingWay then
+                                        logger.print('checking movePath, edgeIdGivingWay = ' .. edgeIdGivingWay)
+                                        -- stop the train if it is heading for the intersection, and not merely transiting on the give-way bit
+                                        if currentMovePathBit.dir == bitBehindIntersection.isGiveWayEdgeDirTowardsIntersection then
+                                            local nextMovePathBit = movePath.path.edges[p+1]
+                                            local nextMovePathBit_onDifferentEdge = nil
+                                            if nextMovePathBit == nil then
+                                                -- do nothing
+                                            elseif nextMovePathBit.edgeId.entity ~= edgeIdGivingWay then
+                                                nextMovePathBit_onDifferentEdge = nextMovePathBit
                                             else
-                                                break
+                                                local pp = p+2
+                                                while movePath.path.edges[pp] ~= nil and movePath.path.edges[pp].edgeId.entity == edgeIdGivingWay do
+                                                    pp = pp+1
+                                                end
+                                                nextMovePathBit_onDifferentEdge = movePath.path.edges[pp]
+                                            end
+
+                                            -- logger.print('nextMovePathBit =') logger.debugPrint(nextMovePathBit)
+                                            -- logger.print('nextMovePathBit_onDifferentEdge =') logger.debugPrint(nextMovePathBit_onDifferentEdge)
+                                            if nextMovePathBit == nil or nextMovePathBit_onDifferentEdge == nil then
+                                                -- end of line or vehicle stopped
+                                                if _stopPropsOfvehicle ~= nil then
+                                                    -- timestamp available: renew it
+                                                    _stopPropsOfvehicle.lastStopTimeMsec = _mLastRefreshGraph_gameTime_msec
+                                                    logger.print('vehicle ' .. vehicleId .. ' with movePath.state ' .. movePath.state .. ': renewing the timestamp,', tostring(nextMovePathBit == nil), tostring(nextMovePathBit_onDifferentEdge == nil), '_mStopProps_indexedBy_stoppedVehicleIds[vehicleId] =') logger.debugPrint(_stopPropsOfvehicle)
+                                                else
+                                                    -- no timestamp: restart the vehicle. Probably, the game just started.
+                                                    _utils.restart(vehicleId)
+                                                    logger.print('vehicle ' .. vehicleId .. ' with movePath.state ' .. movePath.state .. ': attempting to renew the timestamp but _mStopProps_indexedBy_stoppedVehicleIds[vehicleId] is nil => restarting the vehicle,', tostring(nextMovePathBit == nil), tostring(nextMovePathBit_onDifferentEdge == nil))
+                                                end
+                                            else
+                                                local vehicleIdsOnNextEdge = api.engine.system.transportVehicleSystem.getVehicles({nextMovePathBit_onDifferentEdge.edgeId.entity}, false)
+                                                if arrayUtils.arrayHasValue(vehicleIdsOnNextEdge, vehicleId) then
+                                                    -- the train has already passed the give-way edge: do not stop it
+                                                    if movePath.state == 1 or movePath.state == 2 then -- train stopping or stopped: restart it
+                                                        _utils.restart(vehicleId)
+                                                        logger.print('vehicle ' .. vehicleId .. ' was stopping or stopped, I restarted it to avoid gridlocks')
+                                                    else
+                                                        logger.print('vehicle ' .. vehicleId .. ' goes on to avoid gridlocks')
+                                                    end
+                                                    _mStopProps_indexedBy_stoppedVehicleIds[vehicleId] = nil
+                                                else
+                                                    -- the train head is still within the give-way edge: stop it
+                                                    if nextMovePathBit.edgeId.entity ~= edgeIdGivingWay then
+                                                        -- the train is on the last edge bit: stop at once
+                                                        if movePath.state ~= 2 then _utils.stopAtOnce(vehicleId) end
+                                                        if _stopPropsOfvehicle == nil then
+                                                            _mStopProps_indexedBy_stoppedVehicleIds[vehicleId] = {firstStopTimeMsec = _gameTime_msec, lastStopTimeMsec = _mLastRefreshGraph_gameTime_msec, isStoppedAtOnce = true}
+                                                            logger.print('vehicle ' .. vehicleId .. ' stopped at once')
+                                                        else
+                                                            _stopPropsOfvehicle.lastStopTimeMsec = _mLastRefreshGraph_gameTime_msec
+                                                            _stopPropsOfvehicle.isStoppedAtOnce = true
+                                                            logger.print('vehicle ' .. vehicleId .. ' already stopping, now ground to a halt')
+                                                        end
+                                                    else
+                                                        -- there is still a bit of space: stop gently
+                                                        if _stopPropsOfvehicle == nil then
+                                                            if movePath.state ~= 1 and movePath.state ~= 2 then _utils.stopSlowly(vehicleId) end
+                                                            _mStopProps_indexedBy_stoppedVehicleIds[vehicleId] = {firstStopTimeMsec = _gameTime_msec, lastStopTimeMsec = _mLastRefreshGraph_gameTime_msec, isStoppedAtOnce = false}
+                                                            logger.print('vehicle ' .. vehicleId .. ' stopped slowly')
+                                                        else
+                                                            _stopPropsOfvehicle.lastStopTimeMsec = _mLastRefreshGraph_gameTime_msec
+                                                            logger.print('vehicle ' .. vehicleId .. ' got its stop-slowly timestamp renewed')
+                                                        end
+                                                    end
+                                                end
                                             end
                                         end
-                                        --     for pp = p, movePath.dyn.pathPos.edgeIndex + 1, -1 do
-                                        --         local currentMovePathBit = movePath.path.edges[pp]
-                                        --         -- the belly of the train has not passed the intersection yet
-                                        --         if currentMovePathBit.edgeId.entity == edgeIdGivingWay then
-                                        --             -- stop the train if it is heading for the intersection (probably redundant by now)
-                                        --             if currentMovePathBit.dir == bitBehindIntersection.isGiveWayEdgeDirTowardsIntersection then
-                                        --                 if not(api.engine.getComponent(vehicleId, api.type.ComponentType.TRANSPORT_VEHICLE).userStopped) then
-                                        --                     if isStopAtOnce or (p == pp) then
-                                        --                         _utils._stopAtOnce(vehicleId)
-                                        --                     else
-                                        --                         _utils._stopSlowly(vehicleId)
-                                        --                     end
-                                        --                     logger.print('vehicle ' .. vehicleId .. ' just stopped')
-                                        --                 else
-                                        --                     logger.print('vehicle ' .. vehicleId .. ' already stopped')
-                                        --                 end
-                                        --                 stopProps_indexedBy_stoppedVehicleIds[vehicleId] = _mGameTime_msec
-                                        --                 break
-                                        --             -- ignore trains heading out of the intersection
-                                        --             else
-                                        --                 logger.print('vehicle ' .. vehicleId .. ' not stopped coz is heading away from the intersection')
-                                        --                 break
-                                        --             end
-                                        --         end
-                                        --     end
-                                        --     break
-                                        -- end
+                                        break
                                     end
                                 end
                             end
@@ -546,19 +520,38 @@ local _actions = {
                     end
                     -- coroutine.yield()
                 end
+            -- else
+            --     logger.print('no incoming priority vehicles')
             end
         end
+        if _isProfileLog then
+            profileLogger.print('### the startStopTrains loop took ' .. math.ceil((os.clock() - startTick_sec) * 1000) .. ' msec')
+        end
         -- restart vehicles that don't need to wait anymore
-        -- LOLLO TODO this thing restarts trains the user has manually stopped: this is no good
+        -- LOLLO NOTE this thing restarts trains the user has manually stopped: this is no good
         -- I do clean the table, but there is still a while when manually stopped vehicles are restarted automatically.
-        -- The solution is crude: manually unstop the vehicle multiple times until it reaches an intersection, where it will drive on on its own.
-        logger.print('_mGameTime_msec = ' .. tostring(_mGameTime_msec) .. '; stopProps_indexedBy_stoppedVehicleIds =') logger.debugPrint(_mStopProps_indexedBy_stoppedVehicleIds)
+        -- We live with it
+        -- LOLLO NOTE if the game is saved and resumed, this thing won't restart the trains coz the table is empty.
+        -- The game will proceed and the table will populate again,
+        -- unless the user makes a change to the line in the first seconds.
+        -- We live with it.
+        logger.print('startStopTrains has ended the loop, _gameTime_msec = ' .. tostring(_gameTime_msec) .. '; stopProps_indexedBy_stoppedVehicleIds =') logger.debugPrint(_mStopProps_indexedBy_stoppedVehicleIds)
         for vehicleId, stopProps in pairs(_mStopProps_indexedBy_stoppedVehicleIds) do
-            if stopProps ~= nil and stopProps.gameTimeMsec ~= _mGameTime_msec then
-                api.cmd.sendCommand(api.cmd.make.setUserStopped(vehicleId, false))
-                logger.print('vehicle ' .. vehicleId .. ' restarted')
+            if stopProps == nil
+            or stopProps.lastStopTimeMsec ~= _mLastRefreshGraph_gameTime_msec
+            then
+                _utils.restart(vehicleId)
+                logger.print('vehicle ' .. vehicleId .. ' had an old timestamp, so I restarted it')
+                _mStopProps_indexedBy_stoppedVehicleIds[vehicleId] = nil
+            elseif stopProps.firstStopTimeMsec - stopProps.lastStopTimeMsec > constants.maxMSecBeingStopped
+            then
+                _utils.restart(vehicleId)
+                logger.print('vehicle ' .. vehicleId .. ' was stopped too long, so I restarted it')
                 _mStopProps_indexedBy_stoppedVehicleIds[vehicleId] = nil
             end
+        end
+        if _isProfileLog then
+            profileLogger.print('### startStopTrains took ' .. math.ceil((os.clock() - startTick_sec) * 1000) .. ' msec')
         end
     end,
 }
@@ -574,7 +567,8 @@ return {
 
         _mSystemTime_msec = os.clock() * 1000
 
-        if _mGameTime_msec ~= _mLastGameTime_msec or not(_mIsGraphDone) then -- skip if paused, for testing
+        local _isProfileLog = profileLogger.isExtendedLog()
+        if _mGameTime_msec ~= _mLastGameTime_msec or not(_mIsGraphDone) then -- skip if paused and graph done
             logger.print('_mSystemTime_msec = ' .. tostring(_mSystemTime_msec) .. ', _mLastRefreshGraph_systemTime_msec = ' .. tostring(_mLastRefreshGraph_systemTime_msec))
             if _mGetGraphCoroutine == nil
             or (
@@ -592,14 +586,14 @@ return {
             for _ = 1, constants.numGetGraphCoroutineResumesPerTick, 1 do
                 if coroutine.status(_mGetGraphCoroutine) == 'suspended' then
                     local startTick_sec = 0
-                    if profileLogger.isExtendedLog() then startTick_sec = os.clock() end
+                    if _isProfileLog then startTick_sec = os.clock() end
 
                     local isSuccess, error = coroutine.resume(_mGetGraphCoroutine)
                     -- if an error occurs in the coroutine, it dies.
                     if not(isSuccess) then
                         logger.warn('_mGetGraphCoroutine resumed with ERROR') logger.warningDebugPrint(error)
                     end
-                    if profileLogger.isExtendedLog() then
+                    if _isProfileLog then
                         profileLogger.print('_mGetGraphCoroutine resumed, one go took ' .. math.ceil((os.clock() - startTick_sec) * 1000) .. ' msec')
                     end
                 else -- leave it dead for this tick, everything else will have more resources to run through
@@ -617,14 +611,14 @@ return {
             for _ = 1, constants.numStartStopTrainsCoroutineResumesPerTick, 1 do
                 if coroutine.status(_mStartStopTrainsCoroutine) == 'suspended' then
                     local startTick_sec = 0
-                    if profileLogger.isExtendedLog() then startTick_sec = os.clock() end
+                    if _isProfileLog then startTick_sec = os.clock() end
 
                     local isSuccess, error = coroutine.resume(_mStartStopTrainsCoroutine)
                     -- if an error occurs in the coroutine, it dies: good. Errors can happen whenever the graph is out of date.
                     if not(isSuccess) then
                         logger.print('_mStartStopTrainsCoroutine resumed with ERROR') logger.debugPrint(error)
                     end
-                    if profileLogger.isExtendedLog() then
+                    if _isProfileLog then
                         profileLogger.print('_mStartStopTrainsCoroutine resumed, one go took ' .. math.ceil((os.clock() - startTick_sec) * 1000) .. ' msec')
                     end
                 else -- leave it dead, giving a chance to the other coroutine to start and/or to change the shared variables
@@ -647,8 +641,8 @@ return {
 
                 if name == constants.events.removeSignal then
                     _utils.replaceEdgeWithSameRemovingObject(args.objectId)
-                elseif name == constants.events.removeSignals then
-                    _utils.replaceEdgeWithSameRemovingObjects(args.edgeId, args.objectIds)
+                -- elseif name == constants.events.removeSignals then
+                --     _utils.replaceEdgeWithSameRemovingObjects(args.edgeId, args.objectIds)
                 elseif name == constants.events.toggle_notaus then
                     logger.print('state before =') logger.debugPrint(stateHelpers.getState())
                     local state = stateHelpers.getState()
