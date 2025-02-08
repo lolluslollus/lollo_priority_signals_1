@@ -23,6 +23,8 @@ local constants = {
 
     guiIds = {
         dynamicOnOffButtonId = 'lollo_priority_signals_dynamic_on_off_button',
+        locatorButtonId = 'lollo_priority_signals_locator_button',
+        signalLocatorWindowId = 'lollo_priority_signals_locator_window_id',
         warningWindowWithMessageId = 'lollo_priority_signals_warning_window_with_message',
     },
 

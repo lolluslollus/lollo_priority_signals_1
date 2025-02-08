@@ -287,7 +287,7 @@ local _mGetGraphCoroutine, _mStartStopTrainsCoroutine
 local _actions = {
     updateGraph = function()
         _mIsGraphDone = false
-        local prioritySignalIds_indexed = signalHelpers.getAllEdgeObjectsWithModelIds_indexed(_mSignalModelId_EraA, _mSignalModelId_EraC, _mSignalModelId_Invisible)
+        local prioritySignalIds_indexed = signalHelpers.getAllEdgeObjectsWithModelIds_indexed(_mSignalModelId_EraA, _mSignalModelId_EraC, _mSignalModelId_Invisible, true)
         logger.print('updateGraph started, prioritySignalIds_indexed =') logger.debugPrint(prioritySignalIds_indexed)
         coroutine.yield()
         -- By construction, I cannot have more than one priority signal on any edge.
@@ -662,8 +662,8 @@ return {
         _mSignalModelId_EraA = api.res.modelRep.find('railroad/lollo_priority_signals/signal_path_a.mdl')
         _mSignalModelId_EraC = api.res.modelRep.find('railroad/lollo_priority_signals/signal_path_c.mdl')
         _mSignalModelId_Invisible = api.res.modelRep.find('railroad/lollo_priority_signals/signal_path_invisible.mdl')
-        logger.print('_signalModelId_EraA =') logger.debugPrint(_mSignalModelId_EraA)
-        logger.print('_signalModelId_EraC =') logger.debugPrint(_mSignalModelId_EraC)
-        logger.print('_signalModelId_Invisible =') logger.debugPrint(_mSignalModelId_Invisible)
+        logger.print('_mSignalModelId_EraA =') logger.debugPrint(_mSignalModelId_EraA)
+        logger.print('_mSignalModelId_EraC =') logger.debugPrint(_mSignalModelId_EraC)
+        logger.print('_mSignalModelId_Invisible =') logger.debugPrint(_mSignalModelId_Invisible)
     end,
 }

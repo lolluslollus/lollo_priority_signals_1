@@ -7,7 +7,7 @@ local stateHelpers = require ("lollo_priority_signals.stateHelpers")
 
 -- LOLLO NOTE that the state must be read-only here coz we are in the GUI thread
 
-local  _signalModelId_EraA, _signalModelId_EraC, _signalModelId_Invisible
+local  _mSignalModelId_EraA, _mSignalModelId_EraC, _mSignalModelId_Invisible
 local _texts = {
     thisIsAPrioritySignal = '',
 }
@@ -26,17 +26,22 @@ return {
             return
         end
 
+        _mSignalModelId_EraA = api.res.modelRep.find('railroad/lollo_priority_signals/signal_path_a.mdl')
+        _mSignalModelId_EraC = api.res.modelRep.find('railroad/lollo_priority_signals/signal_path_c.mdl')
+        _mSignalModelId_Invisible = api.res.modelRep.find('railroad/lollo_priority_signals/signal_path_invisible.mdl')
+        _texts.thisIsAPrioritySignal = _('ThisIsAPrioritySignal')
+
         guiHelpers.initNotausButton(
             _state.is_on,
             function(isOn)
                 _sendScriptEvent(constants.events.toggle_notaus, isOn)
             end
         )
-
-        _signalModelId_EraA = api.res.modelRep.find('railroad/lollo_priority_signals/signal_path_a.mdl')
-        _signalModelId_EraC = api.res.modelRep.find('railroad/lollo_priority_signals/signal_path_c.mdl')
-        _signalModelId_Invisible = api.res.modelRep.find('railroad/lollo_priority_signals/signal_path_invisible.mdl')
-        _texts.thisIsAPrioritySignal = _('ThisIsAPrioritySignal')
+        guiHelpers.initLocatorButton(
+            function()
+                return {signalModelId_EraA = _mSignalModelId_EraA, signalModelId_EraC = _mSignalModelId_EraC, signalModelId_Invisible = _mSignalModelId_Invisible}
+            end
+        )
     end,
     handleEvent = function(id, name, args)
         if id == 'streetTerminalBuilder' and name == 'builder.apply' then
@@ -47,7 +52,7 @@ return {
             and args.proposal.proposal.edgeObjectsToAdd[1].modelInstance
             then
                 local modelId = args.proposal.proposal.edgeObjectsToAdd[1].modelInstance.modelId
-                if modelId == _signalModelId_EraA or modelId == _signalModelId_EraC or modelId == _signalModelId_Invisible then
+                if modelId == _mSignalModelId_EraA or modelId == _mSignalModelId_EraC or modelId == _mSignalModelId_Invisible then
                     local newSignalId, edgeId, trackTypeIndex =
                         args.proposal.proposal.edgeObjectsToAdd[1].resultEntity,
                         args.proposal.proposal.edgeObjectsToAdd[1].segmentEntity,
@@ -56,9 +61,9 @@ return {
                     logger.print('streetTerminalBuilder - edgeId =') logger.debugPrint(edgeId)
                     -- this destroys the other priority signals on the same edge as soon as a second priority signal is added:
                     local prioritySignalIdsInEdge = {
-                        table.unpack(signalHelpers.getObjectIdsInEdge(edgeId, _signalModelId_EraA)),
-                        table.unpack(signalHelpers.getObjectIdsInEdge(edgeId, _signalModelId_EraC)),
-                        table.unpack(signalHelpers.getObjectIdsInEdge(edgeId, _signalModelId_Invisible)),
+                        table.unpack(signalHelpers.getObjectIdsInEdge(edgeId, _mSignalModelId_EraA)),
+                        table.unpack(signalHelpers.getObjectIdsInEdge(edgeId, _mSignalModelId_EraC)),
+                        table.unpack(signalHelpers.getObjectIdsInEdge(edgeId, _mSignalModelId_Invisible)),
                     }
                     logger.print('streetTerminalBuilder - prioritySignalIdsInEdge =') logger.debugPrint(prioritySignalIdsInEdge)
                     if #prioritySignalIdsInEdge > 1 then
@@ -81,7 +86,7 @@ return {
             local signalList = api.engine.getComponent(objectId, api.type.ComponentType.SIGNAL_LIST)
             if not(signalList) then return end
 
-            if not(signalHelpers.isEdgeObjectIdWithModelIds(objectId, _signalModelId_EraA, _signalModelId_EraC, _signalModelId_Invisible)) then return end
+            if not(signalHelpers.isEdgeObjectIdWithModelIds(objectId, _mSignalModelId_EraA, _mSignalModelId_EraC, _mSignalModelId_Invisible)) then return end
 
             local windowId = 'temp.view.entity_' .. objectId
             local window = api.gui.util.getById(windowId)

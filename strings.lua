@@ -24,10 +24,15 @@ If you place no ordinary signals or stations on one branch, or you place them to
 7) Some mods such as advanced statistics or digital displays hog game_script.update(). The game can only take so much, so you might need to choose.
 8) You can use invisible priority signals and decorate them with functionless signals from some mod.
 			]],
+            ["GoThere"] = "Go there",
             ["Invisible_Signal_Name"] = "Invisible Priority Path Signal",
             ["ModName"] = "Priority signals for tracks",
+            ["Note"] = "Priority signals are expensive, use them sparingly",
+            ["OpenLocator"] = "Locate priority signals",
             ["PrioritySignalsOff"] = "Priority signals OFF",
             ["PrioritySignalsOn"] = "Priority signals ON",
+            ["Refresh"] = "Refresh",
+            ["SignalLocatorWindowTitle"] = "Priority signals in your world:",
             ["Signal_Desc"] = "Place these before an intersection and ordinary signals (or a station) behind. Trains entering the intersection via priority signals will have priority over those entering via ordinary signals (or the station).",
             ["Signal_Name"] = "Priority Path Signal",
             ["ThisIsAPrioritySignal"] = "This is a priority signal",

@@ -51,7 +51,7 @@ end
 ---@param refModelId2 integer
 ---@param refModelId3 integer
 ---@return table<integer, boolean>
-local _getEdgeObjectsIdsWithModelIds_indexed = function(edgeObjectIds_indexed, refModelId1, refModelId2, refModelId3)
+local _getEdgeObjectsIdsWithModelIds_indexed = function(edgeObjectIds_indexed, refModelId1, refModelId2, refModelId3, isCanYield)
     -- local isRestartTimer, _startTick_sec = true, 0
     local results = {}
     local count = 0
@@ -63,15 +63,14 @@ local _getEdgeObjectsIdsWithModelIds_indexed = function(edgeObjectIds_indexed, r
         if _isEdgeObjectIdWithModelIds(edgeObjectId, refModelId1, refModelId2, refModelId3) then
             results[edgeObjectId] = true
         end
-        count = count + 1
-        if count > constants.numGetEdgeObjectsPerTick then
-            -- if logger.isExtendedLog() then
-            --     logger.print('_getEdgeObjectsIdsWithModelIds_indexed: one go took ' .. math.ceil((os.clock() - _startTick_sec) * 1000) .. ' msec')
-            --     isRestartTimer, _startTick_sec = true, 0
-            -- end
-            logger.print('_getEdgeObjectsIdsWithModelIds_indexed about to yield')
-            coroutine.yield()
-            count = 0
+        if isCanYield then -- LOLLO NOTE the coroutine is not always active at this point, the call might come from the UI
+            count = count + 1
+            if count > constants.numGetEdgeObjectsPerTick then
+                logger.print('_getEdgeObjectsIdsWithModelIds_indexed about to yield')
+                coroutine.yield()
+                logger.print('_getEdgeObjectsIdsWithModelIds_indexed just yielded')
+                count = 0
+            end
         end
     end
     return results
@@ -217,9 +216,10 @@ local funcs = {
     ---@param refModelId1 integer
     ---@param refModelId2 integer
     ---@param refModelId3 integer
+    ---@param isCanYield boolean set to false if calling from outside the coroutine
     ---@return table<integer, boolean>
-    getAllEdgeObjectsWithModelIds_indexed = function(refModelId1, refModelId2, refModelId3)
-        return _getEdgeObjectsIdsWithModelIds_indexed(api.engine.system.streetSystem.getEdgeObject2EdgeMap(), refModelId1, refModelId2, refModelId3)
+    getAllEdgeObjectsWithModelIds_indexed = function(refModelId1, refModelId2, refModelId3, isCanYield)
+        return _getEdgeObjectsIdsWithModelIds_indexed(api.engine.system.streetSystem.getEdgeObject2EdgeMap(), refModelId1, refModelId2, refModelId3, isCanYield)
     end,
     ---@param refEdgeId integer
     ---@param nodeId integer
